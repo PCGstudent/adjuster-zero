@@ -1,0 +1,9 @@
+# Normalize line endings: LF in the repo for all text. Keeps diffs clean and CI
+# (Ubuntu) consistent with Windows dev machines.
+* text=auto eol=lf
+
+# Lockfiles & binaries
+*.lock text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
