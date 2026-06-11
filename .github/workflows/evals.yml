@@ -1,0 +1,30 @@
+name: Evals (weekly)
+
+# Replays the golden claim set through the real graph and writes a report.
+# Phase 0: placeholder (no-op) so the schedule + wiring exist. Phase 4 fills in
+# the runner. Runs Sunday night to spread the Flash RPD budget across the week.
+
+on:
+  schedule:
+    - cron: "0 22 * * 0" # Sundays 22:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync --extra dev
+      - name: Run evals (placeholder until Phase 4)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: echo "Eval harness lands in Phase 4 (see /evals)."
