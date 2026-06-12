@@ -138,6 +138,28 @@ async def inject_scenario(scenario_key: str) -> str:
     return agg.id
 
 
+async def inject_custom(
+    fnol_text: str, policy_number: str | None = None, claimant_id: str | None = None
+) -> str:
+    """Inject a claim from an arbitrary (user-edited) FNOL. The planner (real
+    Gemini when configured) extracts + classifies from the text, so routing is
+    genuinely driven by what the user wrote — the heart of the live flow demo."""
+    store = get_store()
+    settings = get_settings()
+    planner = get_client() if settings.gemini_configured else OfflineGeminiClient(None)
+    agg = ClaimAggregate(
+        id=_new_claim_id(), fnol_text=fnol_text,
+        claimant_id=claimant_id or "CLMT-DEMO", policy_number=policy_number,
+        trace_id=f"trc_{uuid.uuid4().hex[:10]}",
+    )
+    await store.commit_transition(
+        agg.model_copy(update={"state": ClaimState.RECEIVED}),
+        claim_event(agg.id, EventType.RECEIVED, component="api",
+                    data={"custom": True, "fnol_chars": len(fnol_text)}, trace_id=agg.trace_id))
+    _track(asyncio.create_task(_run_fresh(agg, store, planner)))
+    return agg.id
+
+
 async def resolve_approval(approval_id: str, payload: dict[str, Any]) -> str:
     """Resolve a pending approval and resume the paused claim (HITL)."""
     store = get_store()

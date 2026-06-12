@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const LINKS = [
+  ["/flow", "Live flow"],
   ["/queue", "Queue"],
   ["/inbox", "Approval inbox"],
   ["/console", "Agent console"],

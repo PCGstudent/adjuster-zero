@@ -36,7 +36,8 @@ export default function Landing() {
           signature — and every decision is replayable.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link href="/queue"><Button size="lg">See it run <ArrowRight className="h-4 w-4" /></Button></Link>
+          <Link href="/flow"><Button size="lg">Watch it route — live <ArrowRight className="h-4 w-4" /></Button></Link>
+          <Link href="/queue"><Button size="lg" variant="outline">Claims queue</Button></Link>
           <Link href="/analytics"><Button size="lg" variant="outline">The numbers</Button></Link>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">

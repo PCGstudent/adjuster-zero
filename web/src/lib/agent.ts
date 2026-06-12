@@ -24,6 +24,8 @@ export const agent = {
   claims: () => get<Claim[]>("/api/claims"),
   claim: (id: string) => get<ClaimDetail>(`/api/claims/${id}`),
   inject: (scenario_key: string) => post<{ claim_id: string }>("/api/claims/inject", { scenario_key }),
+  injectCustom: (body: { fnol_text: string; policy_number?: string; claimant_id?: string }) =>
+    post<{ claim_id: string }>("/api/claims/inject_custom", body),
   events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
   analytics: () => get<Record<string, unknown>>("/api/analytics"),
   runEvals: () => post<Record<string, unknown>>("/api/admin/evals", {}),

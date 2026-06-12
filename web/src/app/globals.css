@@ -30,3 +30,17 @@ body {
   color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
 }
+
+/* live flow diagram */
+@keyframes fd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes fd-march {
+  to { stroke-dashoffset: -16; }
+}
+.fd-node-active { animation: fd-pulse 1.1s ease-in-out infinite; }
+.fd-edge-active {
+  stroke-dasharray: 6 4;
+  animation: fd-march 0.6s linear infinite;
+}

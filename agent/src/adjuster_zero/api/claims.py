@@ -45,6 +45,22 @@ async def inject(req: InjectRequest) -> dict[str, str]:
     return {"claim_id": claim_id}
 
 
+class InjectCustomRequest(BaseModel):
+    fnol_text: str
+    policy_number: str | None = None
+    claimant_id: str | None = None
+
+
+@router.post("/claims/inject_custom")
+async def inject_custom(req: InjectCustomRequest) -> dict[str, str]:
+    """Inject a claim from an edited FNOL (the live-flow page). The LLM decides
+    the route from the text — see it animate on the diagram."""
+    if not req.fnol_text.strip():
+        raise HTTPException(status_code=400, detail="fnol_text is required")
+    claim_id = await service.inject_custom(req.fnol_text, req.policy_number, req.claimant_id)
+    return {"claim_id": claim_id}
+
+
 @router.get("/claims")
 async def list_claims() -> list[dict[str, Any]]:
     return await service.get_store().list_claims()
