@@ -219,6 +219,9 @@ async def fraud_signal_scan(args: FraudScanArgs) -> FraudScanResult:
         signals.append(FraudSignal(
             code="DUP_NARRATIVE", weight=0.35,
             evidence=f"narrative cosine {args.narrative_similarity:.2f}"))
+    if args.narrative_implausible:
+        signals.append(FraudSignal(code="NARRATIVE_IMPLAUSIBLE", weight=0.40,
+                                   evidence="loss narrative is implausible/incoherent (LLM screen)"))
     if args.recent_coverage_increase:
         signals.append(FraudSignal(code="RECENT_COVERAGE_INCREASE", weight=0.20,
                                    evidence="coverage limit raised shortly before loss"))

@@ -28,6 +28,7 @@ class TaskKind(StrEnum):
     EXTRACT = "extract"
     CLASSIFY = "classify"
     FRAUD = "fraud"
+    NARRATIVE = "narrative"
     PLAN = "plan"
     TIEBREAK = "tiebreak"
     LETTER = "letter"
@@ -40,6 +41,7 @@ _TASK_MODEL: dict[TaskKind, ModelName] = {
     TaskKind.EXTRACT: ModelName.FLASH_LITE,
     TaskKind.CLASSIFY: ModelName.FLASH_LITE,
     TaskKind.FRAUD: ModelName.FLASH_LITE,
+    TaskKind.NARRATIVE: ModelName.FLASH_LITE,
     TaskKind.DEBUG: ModelName.FLASH_LITE,
     TaskKind.PLAN: ModelName.FLASH,
     TaskKind.TIEBREAK: ModelName.FLASH,

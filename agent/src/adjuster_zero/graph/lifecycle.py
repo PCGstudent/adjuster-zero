@@ -41,6 +41,7 @@ from ..llm.errors import EscalateToHuman
 from ..persistence.store import ApprovalRecord, ClaimStore, DecisionRecord
 from ..planner import (
     apply_citation_floor,
+    assess_narrative,
     classify_claim,
     decide_tiebreak,
     determine_coverage,
@@ -227,6 +228,23 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             # offline grounding: attach the top retrieved chunk as a citation chip
             coverage = coverage.model_copy(update={"citations": [chunks[0]["id"]]})
 
+        # ── narrative plausibility screen (LLM half of fraud_signal_scan v2).
+        # An impossible/incoherent loss cause must not auto-settle.
+        narrative_implausible = False
+        if deps.ground_coverage:
+            try:
+                na, na_meta = await assess_narrative(deps.planner, agg.fnol_text)
+                spent += na_meta.tokens_in + na_meta.tokens_out
+                narrative_implausible = not na.plausible
+                await store.record_decision(DecisionRecord(
+                    claim_id=agg.id, decision_type="action", model=na_meta.model,
+                    output=na.model_dump(), confidence=na.coherence,
+                    guardrails={"narrative_implausible": narrative_implausible},
+                    tokens_in=na_meta.tokens_in, tokens_out=na_meta.tokens_out,
+                    latency_ms=na_meta.latency_ms, trace_id=agg.trace_id))
+            except Exception:  # noqa: BLE001 — best-effort; default to plausible
+                narrative_implausible = False
+
         # ── fraud: history → exact + semantic duplicate → rules scan
         history = await deps.executor.execute(
             None, "claim_history", {"claimant_id": agg.claimant_id or "unknown"},
@@ -246,6 +264,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             None, "fraud_signal_scan",
             {"claim_id": agg.id, "prior_count_24m": h.get("count_24m", 0),
              "exact_duplicate": bool(exact), "narrative_similarity": narrative_sim,
+             "narrative_implausible": narrative_implausible,
              "first_seen": h.get("first_seen", False),
              "recent_coverage_increase": h.get("recent_coverage_increase", False)},
             claim_id=agg.id, trace_id=agg.trace_id)

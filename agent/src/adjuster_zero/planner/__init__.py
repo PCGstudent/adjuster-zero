@@ -6,6 +6,7 @@ from .classify import classify_claim
 from .coverage import CoverageDetermination, apply_citation_floor, determine_coverage
 from .extract import extract_fnol_fields
 from .letter import draft_letter
+from .narrative import NarrativeAssessment, assess_narrative
 from .schemas import ClaimClassification, ExtractedField, FnolExtraction, LetterDraft
 from .tiebreak import TiebreakDecision, decide_tiebreak
 
@@ -16,8 +17,10 @@ __all__ = [
     "determine_coverage",
     "apply_citation_floor",
     "decide_tiebreak",
+    "assess_narrative",
     "CoverageDetermination",
     "TiebreakDecision",
+    "NarrativeAssessment",
     "ClaimClassification",
     "ExtractedField",
     "FnolExtraction",

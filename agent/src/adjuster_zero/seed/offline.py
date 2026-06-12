@@ -86,6 +86,10 @@ class OfflineGeminiClient(GeminiClient):
         meta = LLMCallMeta(model="offline", tokens_in=150, tokens_out=60, latency_ms=5)
         if task == TaskKind.EXTRACT:
             return self._extraction, meta
+        if task == TaskKind.NARRATIVE:
+            from ..planner.narrative import NarrativeAssessment
+
+            return NarrativeAssessment(plausible=True, coherence=0.9, reason="offline default"), meta
         if task == TaskKind.LETTER:
             letter = LetterDraft(
                 subject="Regarding your claim",

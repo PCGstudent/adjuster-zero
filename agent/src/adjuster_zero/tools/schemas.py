@@ -201,7 +201,8 @@ class FraudScanArgs(BaseModel):
     exact_duplicate: bool = False
     recent_coverage_increase: bool = False
     first_seen: bool = False
-    narrative_similarity: float = 0.0  # Phase 3 semantic duplicate signal
+    narrative_similarity: float = 0.0  # semantic duplicate signal
+    narrative_implausible: bool = False  # LLM coherence screen (impossible cause)
 
 
 class FraudSignal(BaseModel):
