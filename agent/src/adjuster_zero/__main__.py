@@ -12,14 +12,22 @@ import asyncio
 import os
 import sys
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
 
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("adjuster_zero.main:app", host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+    port = int(os.getenv("PORT", "8080"))
+    config = uvicorn.Config("adjuster_zero.main:app", host="0.0.0.0", port=port)
+    server = uvicorn.Server(config)
+    if sys.platform == "win32":
+        # Force a SelectorEventLoop (psycopg async cannot use Windows' Proactor).
+        # Running server.serve() directly bypasses uvicorn's own loop setup.
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        loop = asyncio.SelectorEventLoop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(server.serve())
+    else:
+        server.run()
 
 
 if __name__ == "__main__":

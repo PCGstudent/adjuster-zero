@@ -69,6 +69,15 @@ class BudgetExhausted(EscalateToHuman):
         super().__init__("TOKEN_BUDGET_EXHAUSTED", f"used {used} > budget {budget}")
 
 
+# One pending approval per claim; a deterministic UUID5 so w2_propose and
+# w2_await agree on the id (and it satisfies the approvals.id UUID column).
+_APPR_NS = uuid.uuid5(uuid.NAMESPACE_URL, "adjuster-zero/approvals")
+
+
+def approval_id_for(claim_id: str) -> str:
+    return str(uuid.uuid5(_APPR_NS, claim_id))
+
+
 def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
     store = deps.store
     settings = get_settings()
@@ -368,7 +377,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
 
     # ── W2 standard adjudication (human approval via interrupt) ────────────────
     async def w2_propose(agg: ClaimAggregate) -> dict[str, Any]:
-        appr_id = f"appr_{agg.id}"
+        appr_id = approval_id_for(agg.id)
         deny = agg.coverage.covered is False or agg.rule_id == "R-02"
         updates: dict[str, Any] = {"state": ClaimState.REVIEW_PENDING}
         action: dict[str, Any]
@@ -401,7 +410,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         return updates
 
     async def w2_await(agg: ClaimAggregate) -> dict[str, Any]:
-        appr_id = f"appr_{agg.id}"
+        appr_id = approval_id_for(agg.id)
         # interrupt() pauses here; the checkpointer persists state. The resolve
         # endpoint resumes with Command(resume={resolution, delta, ...}).
         resume: dict[str, Any] = interrupt({"approval_id": appr_id, "claim_id": agg.id})

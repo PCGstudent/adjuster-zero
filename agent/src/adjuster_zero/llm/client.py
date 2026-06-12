@@ -190,17 +190,29 @@ class GeminiClient:
     async def embed(
         self, texts: Sequence[str], *, task_type: str = "RETRIEVAL_DOCUMENT"
     ) -> list[list[float]]:
-        """Embed texts with gemini-embedding-001 (used by the RAG layer)."""
+        """Embed texts with gemini-embedding-001 at EMBED_DIM (768) to match the
+        pgvector column. <3072-dim outputs need re-normalizing for cosine."""
+        import math
+
         from google.genai import types
+
+        from ..rag.embed import EMBED_DIM
 
         await self._buckets[ModelName.FLASH_LITE].acquire()
         resp = await self._genai().aio.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=list(texts),
-            config=types.EmbedContentConfig(task_type=task_type),
+            config=types.EmbedContentConfig(
+                task_type=task_type, output_dimensionality=EMBED_DIM
+            ),
         )
         await db.increment_rpd(EMBEDDING_MODEL)
-        return [list(e.values) for e in resp.embeddings]
+        out: list[list[float]] = []
+        for e in resp.embeddings:
+            v = list(e.values)
+            norm = math.sqrt(sum(x * x for x in v)) or 1.0
+            out.append([x / norm for x in v])
+        return out
 
 
 _client: GeminiClient | None = None

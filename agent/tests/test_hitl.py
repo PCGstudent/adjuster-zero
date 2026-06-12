@@ -13,7 +13,12 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from adjuster_zero.domain.aggregate import ClaimAggregate
 from adjuster_zero.domain.states import ClaimState, Workflow
-from adjuster_zero.graph.lifecycle import LifecycleDeps, resume_claim, run_claim
+from adjuster_zero.graph.lifecycle import (
+    LifecycleDeps,
+    approval_id_for,
+    resume_claim,
+    run_claim,
+)
 from adjuster_zero.llm import GeminiClient, TaskKind
 from adjuster_zero.llm.client import LLMCallMeta
 from adjuster_zero.persistence import InMemoryClaimStore
@@ -93,7 +98,7 @@ def test_w2_deny_round_trip() -> None:
                  if t["tool"] == "customer_comm_send" and t["args"].get("mode") == "send"]
         assert sends and sends[0]["status"] == "ok"
         assert "payment_execute" not in [t["tool"] for t in store.tool_calls]
-        appr = await store.get_approval("appr_CLM-B")
+        appr = await store.get_approval(approval_id_for("CLM-B"))
         assert appr["status"] == "approved"
 
     asyncio.run(run())
@@ -112,7 +117,7 @@ def test_w2_pay_modify_uses_my_amount() -> None:
         paused = await run_claim(agg, deps, checkpointer=saver, thread_id=agg.id)
         assert paused.state is ClaimState.REVIEW_PENDING
         assert paused.workflow is Workflow.W2
-        appr = await store.get_approval("appr_CLM-D")
+        appr = await store.get_approval(approval_id_for("CLM-D"))
         assert appr["requested_action"]["type"] == "pay"
         assert appr["requested_action"]["amount"] == 2800
 
@@ -122,7 +127,7 @@ def test_w2_pay_modify_uses_my_amount() -> None:
                           "reason_code": "depreciation", "resolved_by": "marcus"})
         assert final.state is ClaimState.CLOSED
         assert final.financials.paid == 2000  # MY amount, not the proposed 2800
-        appr2 = await store.get_approval("appr_CLM-D")
+        appr2 = await store.get_approval(approval_id_for("CLM-D"))
         assert appr2["status"] == "modified"
         assert appr2["delta"] == {"amount": 2000}
         assert appr2["reason_code"] == "depreciation"

@@ -293,16 +293,14 @@ class PostgresClaimStore:
         if pool is None:
             return
         status = {"approve": "approved", "modify": "modified", "reject": "rejected"}[resolution]
-        resolver = None
-        if resolved_by:
-            # resolved_by is a users.id UUID when supplied; else leave null.
-            resolver = resolved_by
+        # resolved_by is a users.id UUID FK; without seeded auth users we leave it
+        # NULL (the resolution + reason_code capture the human action for calibration).
         async with pool.connection() as conn, conn.cursor() as cur:
             await cur.execute(
                 """
                 UPDATE approvals SET status=%s, resolution=%s, delta=%s, reason_code=%s,
-                    resolved_by=%s, resolved_at=now()
+                    resolved_at=now()
                 WHERE id=%s
                 """,
-                (status, resolution, Json(delta), reason_code, resolver, approval_id),
+                (status, resolution, Json(delta), reason_code, approval_id),
             )
