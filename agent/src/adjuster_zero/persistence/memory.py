@@ -92,6 +92,9 @@ class InMemoryClaimStore:
     async def get_tool_calls(self, claim_id: str) -> list[dict[str, Any]]:
         return [t for t in self.tool_calls if t.get("claim_id") == claim_id]
 
+    async def get_recent_events(self, limit: int = 50) -> list[dict[str, Any]]:
+        return list(reversed(self.events[-limit:]))
+
     async def create_approval(self, appr: ApprovalRecord) -> None:
         self.approvals[appr.id] = {
             **appr.model_dump(),

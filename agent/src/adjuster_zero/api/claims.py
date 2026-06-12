@@ -39,6 +39,12 @@ async def list_claims() -> list[dict[str, Any]]:
     return await service.get_store().list_claims()
 
 
+@router.get("/events")
+async def recent_events(limit: int = 50) -> list[dict[str, Any]]:
+    """Global event stream across all claims — feeds the Agent Console."""
+    return await service.get_store().get_recent_events(min(limit, 200))
+
+
 @router.get("/claims/{claim_id}")
 async def claim_detail(claim_id: str) -> dict[str, Any]:
     store = service.get_store()

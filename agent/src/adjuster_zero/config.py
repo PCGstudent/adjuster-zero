@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     port: int = 8080
     claim_token_budget: int = 120_000
     max_replans: int = 2
+    # Simulate a degraded fraud control (admin toggle / demo): caps routing at W2
+    # — no straight-through processing while a fraud control is down (thesis 7).
+    fraud_controls_degraded: bool = False
 
     @property
     def db_configured(self) -> bool:

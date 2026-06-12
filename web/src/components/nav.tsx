@@ -12,6 +12,9 @@ export function Nav() {
       <Link href="/inbox" className="text-muted-foreground hover:text-foreground">
         Approval inbox
       </Link>
+      <Link href="/console" className="text-muted-foreground hover:text-foreground">
+        Agent console
+      </Link>
     </nav>
   );
 }

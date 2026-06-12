@@ -41,6 +41,9 @@ typecheck:
 seed:           ## generate + load synthetic policies/claimants/FNOLs (Phase 1+)
 	cd agent && uv run python -m adjuster_zero.seed.run
 
+ingest:         ## chunk + embed the guideline corpus into pgvector (Phase 3)
+	cd agent && uv run python -m adjuster_zero.rag.ingest
+
 demo:           ## run the phase demo journey end-to-end (Phase 1+)
 	cd agent && uv run python -m adjuster_zero.seed.demo
 

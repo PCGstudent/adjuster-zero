@@ -194,3 +194,53 @@ Format: ADR-NNN, date, context, decision, consequences.
   W2 denial-letter token accrual (thesis 6 symmetry). Deferred per scope:
   citation-coverage confidence floor (Phase 3), full rail reconcile-before-retry
   and sanctions fail-closed gate (Phase 4/later).
+
+---
+
+## Phase 3 — Grounding, fraud, and the glass cockpit (Journey C)
+
+### ADR-016 — RAG as a grounding service; embedder abstraction with offline fallback
+- **Date:** 2026-06-12
+- **Decision:** 12 synthetic guideline docs → section-aware chunks → embeddings →
+  hybrid retrieval (keyword + cosine, reciprocal-rank fusion). An `Embedder`
+  protocol has `GeminiEmbedder` (prod, via GeminiClient → rate-limited/RPD) and a
+  deterministic `LocalHashEmbedder` (stable md5 buckets) so retrieval + semantic-
+  duplicate detection run offline/in tests without a key. Runtime uses an
+  in-memory index without a DB and `PgGuidelineIndex` (populated by `make ingest`)
+  with Supabase. 003_guidelines.sql adds the `vector(768)` store.
+
+### ADR-017 — Grounded coverage + citation floor (thesis 8 enforced)
+- **Date:** 2026-06-12
+- **Decision:** `determine_coverage` (flash) decides coverage grounded only in
+  retrieved chunks; the schema requires `citations`. `apply_citation_floor`
+  validates citations against the retrieved chunk ids and floors confidence to
+  0.5 when a determinative claim is uncited. Floored confidence (< 0.60) makes STP
+  impossible and triggers R-05 → W5 human review (e2e tested). Offline attaches
+  the top retrieved chunk as a citation chip to rules-only coverage.
+
+### ADR-018 — Fraud path: semantic duplicates, weather, degraded mode
+- **Date:** 2026-06-12
+- **Decision:** `duplicate_claim_check` v2 adds narrative-embedding semantic
+  matching (cosine ≥ 0.82) — paraphrases match even across perils. A degraded
+  fraud control caps routing at W2 + emits `control.degraded_mode` (fail-closed,
+  no STP). The `fraud_suspect` scenario scores 0.75 → W3, no payment edge.
+
+### ADR-019 — R-06 tiebreak is the only LLM routing influence
+- **Date:** 2026-06-12
+- **Decision:** `route()` stays pure (conservative W2 + `needs_tiebreak`); the
+  graph's `route_node` runs `decide_tiebreak` (flash + guidelines) for the
+  ambiguous band only, restricted to W2/W3, persisted with alternatives.
+
+### ADR-020 — Observability: own decision log + env-gated LangSmith
+- **Date:** 2026-06-12
+- **Decision:** `agent_decisions` + `claim_events` (trace_id minted at intake)
+  are the primary trace; `obs.configure_tracing()` enables LangSmith only when
+  configured. Cockpit renders the decision log (citations chips, alternatives,
+  tokens, latency), a "chose NOT to" panel, a state-machine rail, and a global
+  Agent Console.
+
+### ADR-021 — Phase 3 guardian outcome
+- **Date:** 2026-06-12
+- **Outcome:** **PASS WITH WARNINGS**, no blockers. Added the thesis-8 e2e test
+  (uncited determination → W5). Deferred to Phase 4: sanctions fail-closed
+  pre-payment gate (T-11); a runtime (not toggle-only) degraded path.

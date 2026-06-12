@@ -66,6 +66,15 @@ export interface Scenario {
   expected_route: string | null;
 }
 
+export interface GlobalEvent {
+  id: number;
+  claim_id: string;
+  ts: string;
+  type: string;
+  actor: { kind?: string; component?: string };
+  data: Record<string, unknown>;
+}
+
 export interface Approval {
   id: string;
   claim_id: string;

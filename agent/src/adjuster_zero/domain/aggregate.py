@@ -83,8 +83,10 @@ class ClaimAggregate(BaseModel):
 
     # investigation outputs
     coverage: Coverage = Field(default_factory=Coverage)
-    fraud_score: float = 0.0  # placeholder until Phase 2 fraud scan
+    fraud_score: float = 0.0
     fraud_signals: list[dict[str, Any]] = Field(default_factory=list)
+    duplicate_hard_match: bool = False  # exact duplicate → R-00 (semantic does NOT)
+    degraded: bool = False  # a fraud control is down → cap routing at W2
 
     financials: Financials = Field(default_factory=Financials)
     open_questions: list[str] = Field(default_factory=list)

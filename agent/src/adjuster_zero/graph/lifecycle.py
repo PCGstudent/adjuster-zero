@@ -39,7 +39,14 @@ from ..domain.states import ClaimState, Workflow
 from ..llm import GeminiClient
 from ..llm.errors import EscalateToHuman
 from ..persistence.store import ApprovalRecord, ClaimStore, DecisionRecord
-from ..planner import classify_claim, draft_letter, extract_fnol_fields
+from ..planner import (
+    apply_citation_floor,
+    classify_claim,
+    decide_tiebreak,
+    determine_coverage,
+    draft_letter,
+    extract_fnol_fields,
+)
 from ..router import RouterInput, RoutingConfig, route
 from ..tools import ToolExecutor
 from ..tools.schemas import PaymentAuthorization
@@ -52,6 +59,9 @@ class LifecycleDeps:
     executor: ToolExecutor
     routing_config: RoutingConfig
     config_version: int | None = None
+    # When True the graph runs the grounded (RAG + LLM) coverage determination and
+    # the R-06 tiebreak; otherwise it uses rules-only coverage + conservative W2.
+    ground_coverage: bool = False
 
 
 class BudgetExhausted(EscalateToHuman):
@@ -129,14 +139,17 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         return updates
 
     async def investigate(agg: ClaimAggregate) -> dict[str, Any]:
-        """Read-only (T0) tools gather routing inputs: policy, coverage, estimate,
-        history, duplicates, and a rules-only fraud score. Tolerant of missing data."""
+        """Read-only (T0) tools gather routing inputs: policy, coverage (RAG-
+        grounded), estimate, history, duplicates (exact + semantic), weather, and
+        a fraud score. Tolerant of missing data; sets a degraded flag if a fraud
+        control is down."""
         coverage = Coverage()
         policy_status = PolicyStatus.UNKNOWN
         policy_id = agg.policy_id
         amount_est = agg.financials.amount_est
         loss_date = agg.extraction.fields.get("loss_date", "")
         peril = agg.classification.peril or "other"
+        degraded = get_settings().fraud_controls_degraded
 
         if agg.policy_number:
             pol = await deps.executor.execute(
@@ -160,7 +173,41 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         if est.ok and est.data:
             amount_est = est.data["total"]
 
-        # fraud inputs: history + exact duplicate, then the rules-only scan
+        # Weather corroboration for weather perils (mock NOAA).
+        if peril in {"hail", "weather", "wind", "flood", "storm"}:
+            wx = await deps.executor.execute(
+                None, "weather_event_verify",
+                {"peril": peril, "date": loss_date,
+                 "location": agg.extraction.fields.get("loss_location", "")},
+                claim_id=agg.id, trace_id=agg.trace_id)
+            if wx.data and wx.data.get("degraded"):
+                degraded = True
+
+        # ── RAG-grounded coverage determination + citation enforcement (thesis 8)
+        gs = await deps.executor.execute(
+            None, "guideline_search",
+            {"query": f"{peril} coverage policy status {policy_status.value}", "k": 5},
+            claim_id=agg.id, trace_id=agg.trace_id)
+        chunks = (gs.data or {}).get("chunks", [])
+        if chunks and policy_id and deps.ground_coverage:
+            det, meta = await determine_coverage(
+                deps.planner,
+                query=f"Is a {peril} loss covered under policy {policy_id} "
+                      f"(status {policy_status.value}, loss {loss_date})?",
+                chunks=chunks)
+            grounded, guardrails = apply_citation_floor(det, {c["id"] for c in chunks})
+            coverage = grounded
+            await store.record_decision(DecisionRecord(
+                claim_id=agg.id, decision_type="action", model=meta.model,
+                output=det.model_dump(), confidence=grounded.confidence,
+                citations=grounded.citations, guardrails=guardrails,
+                tokens_in=meta.tokens_in, tokens_out=meta.tokens_out,
+                latency_ms=meta.latency_ms, trace_id=agg.trace_id))
+        elif chunks and coverage.covered is not None and not coverage.citations:
+            # offline grounding: attach the top retrieved chunk as a citation chip
+            coverage = coverage.model_copy(update={"citations": [chunks[0]["id"]]})
+
+        # ── fraud: history → exact + semantic duplicate → rules scan
         history = await deps.executor.execute(
             None, "claim_history", {"claimant_id": agg.claimant_id or "unknown"},
             claim_id=agg.id, trace_id=agg.trace_id)
@@ -168,28 +215,40 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         dup = await deps.executor.execute(
             None, "duplicate_claim_check",
             {"claim_id": agg.id, "claimant_id": agg.claimant_id or "unknown",
-             "peril": peril, "loss_date": loss_date},
+             "peril": peril, "loss_date": loss_date, "narrative": agg.fnol_text},
             claim_id=agg.id, trace_id=agg.trace_id)
         exact = (dup.data or {}).get("exact_matches", [])
+        semantic = (dup.data or {}).get("semantic_matches", [])
+        if (dup.data or {}).get("degraded"):
+            degraded = True
+        narrative_sim = max((m["similarity"] for m in semantic), default=0.0)
         scan = await deps.executor.execute(
             None, "fraud_signal_scan",
             {"claim_id": agg.id, "prior_count_24m": h.get("count_24m", 0),
-             "exact_duplicate": bool(exact), "first_seen": h.get("first_seen", False),
+             "exact_duplicate": bool(exact), "narrative_similarity": narrative_sim,
+             "first_seen": h.get("first_seen", False),
              "recent_coverage_increase": h.get("recent_coverage_increase", False)},
             claim_id=agg.id, trace_id=agg.trace_id)
         fraud_score = (scan.data or {}).get("score", 0.0)
         fraud_signals = (scan.data or {}).get("signals", [])
 
         fin = agg.financials.model_copy(update={"amount_est": amount_est})
+        dup_refs = exact + [m["claim_id"] for m in semantic]
         updates = {
             "coverage": coverage, "policy_status": policy_status, "policy_id": policy_id,
             "financials": fin, "fraud_score": fraud_score, "fraud_signals": fraud_signals,
             "state": ClaimState.TRIAGE,
-            "open_questions": [f"duplicate of {m}" for m in exact],
+            "open_questions": [f"duplicate of {m}" for m in dup_refs],
+            "duplicate_hard_match": bool(exact),
+            "degraded": degraded,
         }
         await _commit(agg.model_copy(update=updates), EventType.INVESTIGATED,
                       covered=coverage.covered, amount_est=amount_est, fraud_score=fraud_score,
-                      policy_status=policy_status.value, duplicates=exact)
+                      policy_status=policy_status.value, duplicates=dup_refs,
+                      citations=coverage.citations, degraded=degraded)
+        if degraded:
+            await _commit(agg.model_copy(update=updates), EventType.DEGRADED_MODE,
+                          reason="fraud_control_unavailable")
         return updates
 
     async def route_node(agg: ClaimAggregate) -> dict[str, Any]:
@@ -209,7 +268,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             classification_confidence=agg.classification.confidence,
             injury_flag=agg.classification.injury_flag,
             attorney_flag=agg.classification.attorney_flag,
-            duplicate_hard_match=bool(agg.open_questions),
+            duplicate_hard_match=agg.duplicate_hard_match,
         )
         decision = route(inp, deps.routing_config)
         await store.record_decision(DecisionRecord(
@@ -217,13 +276,42 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             rule_id=decision.rule_id, config_version=deps.config_version,
             guardrails={"needs_tiebreak": decision.needs_tiebreak}, trace_id=agg.trace_id,
         ))
+        workflow = decision.workflow
+        rule_id = decision.rule_id
+        rationale = decision.rationale
+
+        # R-06 ambiguous band: the ONLY place the LLM influences routing. flash,
+        # grounded in fraud guidelines, chooses W2 or W3; logged with alternatives.
+        if decision.needs_tiebreak and deps.ground_coverage:
+            gs = await deps.executor.execute(
+                None, "guideline_search", {"query": "fraud screening indicators", "k": 4},
+                claim_id=agg.id, trace_id=agg.trace_id)
+            tb, meta = await decide_tiebreak(
+                deps.planner,
+                context=f"fraud_score={agg.fraud_score}, signals={agg.fraud_signals}",
+                chunks=(gs.data or {}).get("chunks", []))
+            workflow = Workflow(tb.workflow)
+            rule_id = "R-06"
+            rationale = f"tiebreak -> {tb.workflow}: {tb.rationale}"
+            await store.record_decision(DecisionRecord(
+                claim_id=agg.id, decision_type="tiebreak", model=meta.model,
+                output=tb.model_dump(), confidence=tb.confidence,
+                alternatives=[a.model_dump() for a in tb.alternatives],
+                tokens_in=meta.tokens_in, tokens_out=meta.tokens_out,
+                latency_ms=meta.latency_ms, trace_id=agg.trace_id))
+
+        # Degraded fraud control: never STP — cap W1 at W2 (thesis 7).
+        if agg.degraded and workflow == Workflow.W1:
+            workflow = Workflow.W2
+            rule_id = "R-DEGRADED"
+            rationale = "fraud control degraded -> cap at W2 (no straight-through)"
+
         updates = {
-            "workflow": decision.workflow, "rule_id": decision.rule_id,
+            "workflow": workflow, "rule_id": rule_id,
             "config_version": deps.config_version, "state": ClaimState.PLANNING,
         }
         await _commit(agg.model_copy(update=updates), EventType.ROUTED,
-                      workflow=decision.workflow.value, rule_id=decision.rule_id,
-                      rationale=decision.rationale)
+                      workflow=workflow.value, rule_id=rule_id, rationale=rationale)
         return updates
 
     # ── W1 straight-through ────────────────────────────────────────────────────

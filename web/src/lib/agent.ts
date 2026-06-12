@@ -1,4 +1,4 @@
-import type { Approval, Claim, ClaimDetail, Scenario } from "./types";
+import type { Approval, Claim, ClaimDetail, GlobalEvent, Scenario } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:8080";
 
@@ -24,6 +24,7 @@ export const agent = {
   claims: () => get<Claim[]>("/api/claims"),
   claim: (id: string) => get<ClaimDetail>(`/api/claims/${id}`),
   inject: (scenario_key: string) => post<{ claim_id: string }>("/api/claims/inject", { scenario_key }),
+  events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
   approvals: () => get<Approval[]>("/api/approvals"),
   resolve: (id: string, body: { resolution: string; delta?: unknown; reason_code?: string }) =>
     post<{ claim_id: string }>(`/api/approvals/${id}/resolve`, { ...body, resolved_by: "operator" }),

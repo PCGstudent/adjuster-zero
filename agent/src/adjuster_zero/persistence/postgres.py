@@ -226,6 +226,13 @@ class PostgresClaimStore:
             "SELECT * FROM tool_calls WHERE claim_id = %s ORDER BY ts", (claim_id,)
         )
 
+    async def get_recent_events(self, limit: int = 50) -> list[dict[str, Any]]:
+        return await self._query(
+            "SELECT id, claim_id, ts, type, actor, data, trace_id FROM claim_events "
+            "ORDER BY ts DESC, id DESC LIMIT %s",
+            (limit,),
+        )
+
     async def create_approval(self, appr: ApprovalRecord) -> None:
         pool = db.get_pool()
         if pool is None:

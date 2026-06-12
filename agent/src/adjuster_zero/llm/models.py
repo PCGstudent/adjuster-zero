@@ -31,6 +31,7 @@ class TaskKind(StrEnum):
     PLAN = "plan"
     TIEBREAK = "tiebreak"
     LETTER = "letter"
+    COVERAGE = "coverage"
     DEBUG = "debug"
 
 
@@ -43,6 +44,7 @@ _TASK_MODEL: dict[TaskKind, ModelName] = {
     TaskKind.PLAN: ModelName.FLASH,
     TaskKind.TIEBREAK: ModelName.FLASH,
     TaskKind.LETTER: ModelName.FLASH,
+    TaskKind.COVERAGE: ModelName.FLASH,  # money-adjacent determination → flash
 }
 
 

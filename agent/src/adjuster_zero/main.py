@@ -25,6 +25,9 @@ from .llm.schemas import ToyClassification
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+    from .obs import configure_tracing
+
+    configure_tracing()  # env-gated LangSmith
     await db.open_pool()
     yield
     await db.close_pool()

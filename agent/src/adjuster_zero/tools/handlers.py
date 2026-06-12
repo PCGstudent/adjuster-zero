@@ -37,6 +37,9 @@ from .schemas import (
     RepairLineItem,
     ReserveSetArgs,
     ReserveSetResult,
+    WeatherEvent,
+    WeatherVerifyArgs,
+    WeatherVerifyResult,
 )
 
 # peril → the coverage code that would apply
@@ -237,3 +240,17 @@ async def document_request_create(args: DocRequestArgs) -> DocRequestResult:
 async def escalate_to_human(args: EscalateArgs) -> EscalateResult:
     queue = {"W3": "siu", "W5": "senior_adjuster"}.get(args.reason_code, "ops")
     return EscalateResult(task_id=f"task_{args.claim_id}", queue=queue, sla_at="2026-06-13T00:00:00Z")
+
+
+_WEATHER_PERILS = {"hail", "weather", "wind", "flood", "storm"}
+
+
+async def weather_event_verify(args: WeatherVerifyArgs) -> WeatherVerifyResult:
+    # Mock NOAA: corroborate weather perils. `verified: false` is a finding, not
+    # an error (it feeds the fraud screen as PERIL_UNCORROBORATED).
+    if args.peril.lower() in _WEATHER_PERILS:
+        return WeatherVerifyResult(
+            verified=True,
+            event=WeatherEvent(type=args.peril.lower(), magnitude="1.75in", distance_km=3.1),
+        )
+    return WeatherVerifyResult(verified=False)

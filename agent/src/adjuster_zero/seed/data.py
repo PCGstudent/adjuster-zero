@@ -47,12 +47,25 @@ POLICIES: dict[str, dict[str, Any]] = {
         ],
         "endorsements": [],
     },
+    "POL-55200": {
+        "policy_id": "pol_55200",
+        "status": "active",
+        "holder": "D. Frost",
+        "effective_from": "2024-01-01",
+        "effective_to": "2027-12-31",
+        "coverages": [
+            {"code": "AUTO-COMP", "limit": 70000, "deductible": 250},
+            {"code": "AUTO-COLL", "limit": 70000, "deductible": 500},
+        ],
+        "endorsements": [],
+    },
 }
 
 CLAIMANTS: dict[str, dict[str, Any]] = {
     "CLMT-001": {"name": "J. Ortiz", "dob": "1986-04-12", "since": "2020-01-01"},
     "CLMT-002": {"name": "M. Reyes", "dob": "1979-11-30", "since": "2019-06-01"},
     "CLMT-003": {"name": "K. Singh", "dob": "1992-08-05", "since": "2022-03-01"},
+    "CLMT-004": {"name": "D. Frost", "dob": "1990-02-22", "since": "2024-01-01"},
 }
 
 
@@ -65,10 +78,21 @@ CLAIM_HISTORY: dict[str, list[dict[str, Any]]] = {
          "paid": 1800, "narrative": "Rear-ended at a stop light, bumper damage."},
     ],
     "CLMT-003": [],
+    # fraud_suspect: 3 prior claims in the window, one a near-duplicate narrative.
+    "CLMT-004": [
+        {"claim_id": "CLM-2025-09112", "date": "2025-09-03", "peril": "theft",
+         "paid": 6200,
+         "narrative": "My parked car was broken into overnight in the driveway and "
+                      "my laptop bag and tools were stolen from the trunk."},
+        {"claim_id": "CLM-2026-01187", "date": "2026-01-15", "peril": "glass",
+         "paid": 380, "narrative": "Windshield cracked by a rock on the freeway."},
+        {"claim_id": "CLM-2026-03340", "date": "2026-03-22", "peril": "collision",
+         "paid": 2400, "narrative": "Backed into a pole in a parking lot, dented rear panel."},
+    ],
 }
 
 # Claimants whose policy limit was raised shortly before the loss (fraud signal).
-RECENT_COVERAGE_INCREASE: set[str] = set()
+RECENT_COVERAGE_INCREASE: set[str] = {"CLMT-004"}
 
 
 class Scenario(BaseModel):
@@ -137,6 +161,26 @@ SCENARIOS: list[Scenario] = [
             "expected_route": "W4",
             "expected_terminal_state": "INFO_PENDING",
             "reason": "completeness below threshold; missing policy number, loss date, location",
+        },
+    ),
+    Scenario(
+        key="fraud_suspect",
+        title="Fraud suspect (route to SIU)",
+        fnol_text=(
+            "My car was broken into overnight while it was parked in my driveway, and "
+            "my laptop bag and some tools were stolen out of the trunk again. Policy "
+            "POL-55200. Please open a theft claim."
+        ),
+        policy_number="POL-55200",
+        claimant_id="CLMT-004",
+        document_ids=[],
+        loss_date="2026-06-08",
+        ground_truth={
+            "expected_route": "W3",
+            "expected_terminal_state": "ESCALATED",
+            "peril": "theft",
+            "severity": 2,
+            "reason": "near-duplicate narrative + recent coverage increase + 3 prior claims",
         },
     ),
 ]

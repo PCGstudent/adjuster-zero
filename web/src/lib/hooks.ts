@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { agent } from "./agent";
 import { getSupabase } from "./supabase";
-import type { Approval, Claim, ClaimDetail } from "./types";
+import type { Approval, Claim, ClaimDetail, GlobalEvent } from "./types";
 
 /**
  * Live claims queue. Primary signal is Supabase Realtime on the `claims` table
@@ -88,4 +88,28 @@ export function useApprovals(): { approvals: Approval[]; refresh: () => void } {
   }, [refresh]);
 
   return { approvals, refresh };
+}
+
+/** Global live event stream across all claims — the Agent Console. */
+export function useGlobalEvents(): GlobalEvent[] {
+  const [events, setEvents] = useState<GlobalEvent[]>([]);
+  const refresh = useCallback(() => {
+    agent.events().then(setEvents).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const poll = setInterval(refresh, 2500);
+    const sb = getSupabase();
+    const channel = sb
+      ?.channel("agent-console")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "claim_events" }, refresh)
+      .subscribe();
+    return () => {
+      clearInterval(poll);
+      if (sb && channel) sb.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  return events;
 }

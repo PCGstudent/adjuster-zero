@@ -243,3 +243,45 @@ class EscalateResult(BaseModel):
     task_id: str
     queue: str
     sla_at: str
+
+
+# ── T-10 weather_event_verify (T0, idempotent, cached; mock NOAA) ────────────
+class WeatherVerifyArgs(BaseModel):
+    lat: float | None = None
+    lng: float | None = None
+    location: str = ""
+    date: str = ""
+    peril: str = ""
+
+
+class WeatherEvent(BaseModel):
+    type: str
+    magnitude: str
+    distance_km: float
+
+
+class WeatherVerifyResult(BaseModel):
+    verified: bool
+    event: WeatherEvent | None = None
+    source: str = "mock-noaa"
+    degraded: bool = False
+
+
+# ── T-17 guideline_search (T0, idempotent; RAG retrieval) ────────────────────
+class GuidelineSearchArgs(BaseModel):
+    query: str
+    line: str | None = None
+    k: int = 5
+
+
+class GuidelineChunkOut(BaseModel):
+    id: str
+    doc: str
+    section: str
+    text: str
+    score: float
+
+
+class GuidelineSearchResult(BaseModel):
+    chunks: list[GuidelineChunkOut] = Field(default_factory=list)
+    low_relevance: bool = False

@@ -21,27 +21,54 @@ from ..llm import GeminiClient, get_client
 from ..persistence import InMemoryClaimStore, load_routing_config
 from ..persistence.postgres import PostgresClaimStore, PostgresIdempotencyStore
 from ..persistence.store import ClaimStore
-from ..seed.data import Scenario, get_scenario
+from ..rag.embed import get_embedder
+from ..rag.index import build_index
+from ..seed.data import CLAIM_HISTORY, Scenario, get_scenario
 from ..seed.offline import OfflineGeminiClient
-from ..tools import InMemoryIdempotencyStore, ToolExecutor, build_registry
+from ..tools import InMemoryIdempotencyStore, RagContext, ToolExecutor, build_registry
 
 # Process-local store + checkpointer used only when no DATABASE_URL is configured.
 _memory_store = InMemoryClaimStore()
 _memory_saver = MemorySaver()
 _running: set[asyncio.Task] = set()
+_rag: RagContext | None = None
+_rag_lock = asyncio.Lock()
 
 
 def get_store() -> ClaimStore:
     return PostgresClaimStore() if get_settings().db_configured else _memory_store
 
 
+def _narratives() -> dict[str, list[tuple[str, str]]]:
+    return {
+        cid: [(c["claim_id"], c.get("narrative", "")) for c in claims]
+        for cid, claims in CLAIM_HISTORY.items()
+    }
+
+
+async def get_rag() -> RagContext:
+    """Build the guideline index + embedder once and cache it for the process."""
+    global _rag
+    if _rag is None:
+        async with _rag_lock:
+            if _rag is None:
+                _rag = RagContext(
+                    index=await build_index(), embedder=get_embedder(),
+                    narratives=_narratives(),
+                )
+    return _rag
+
+
 async def _build_deps(store: ClaimStore, planner: GeminiClient) -> LifecycleDeps:
     cfg, version = await load_routing_config()
-    idem = PostgresIdempotencyStore() if get_settings().db_configured else InMemoryIdempotencyStore()
-    executor = ToolExecutor(build_registry(), idempotency=idem, recorder=store.record_tool_call)
+    settings = get_settings()
+    idem = PostgresIdempotencyStore() if settings.db_configured else InMemoryIdempotencyStore()
+    executor = ToolExecutor(build_registry(await get_rag()), idempotency=idem,
+                            recorder=store.record_tool_call)
     return LifecycleDeps(
         store=store, planner=planner, executor=executor,
         routing_config=cfg, config_version=version,
+        ground_coverage=settings.gemini_configured,
     )
 
 

@@ -20,9 +20,11 @@ from ..domain.aggregate import ClaimAggregate
 from ..graph.lifecycle import LifecycleDeps, run_claim
 from ..llm import get_client
 from ..persistence import InMemoryClaimStore
+from ..rag.embed import get_embedder
+from ..rag.index import InMemoryGuidelineIndex
 from ..router import RoutingConfig
-from ..tools import ToolExecutor, build_registry
-from .data import SCENARIOS, Scenario, get_scenario
+from ..tools import RagContext, ToolExecutor, build_registry
+from .data import CLAIM_HISTORY, SCENARIOS, Scenario, get_scenario
 from .offline import OfflineGeminiClient
 
 
@@ -30,10 +32,17 @@ async def run_scenario(scenario: Scenario) -> None:
     store = InMemoryClaimStore()
     settings = get_settings()
     planner = get_client() if settings.gemini_configured else OfflineGeminiClient(scenario)
-    executor = ToolExecutor(build_registry(), recorder=store.record_tool_call)
+    embedder = get_embedder()
+    rag = RagContext(
+        index=await InMemoryGuidelineIndex.build(embedder), embedder=embedder,
+        narratives={cid: [(c["claim_id"], c.get("narrative", "")) for c in cl]
+                    for cid, cl in CLAIM_HISTORY.items()},
+    )
+    executor = ToolExecutor(build_registry(rag), recorder=store.record_tool_call)
     deps = LifecycleDeps(
         store=store, planner=planner, executor=executor,
         routing_config=RoutingConfig(), config_version=1,
+        ground_coverage=settings.gemini_configured,
     )
     agg = ClaimAggregate(
         id=f"CLM-DEMO-{scenario.key}",

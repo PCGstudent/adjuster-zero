@@ -12,7 +12,7 @@ from .base import (
     ToolResult,
 )
 from .executor import IdempotencyStore, InMemoryIdempotencyStore, ToolExecutor
-from .registry import build_registry
+from .registry import RagContext, build_registry
 from .workflows import WORKFLOW_ALLOWLISTS, tool_allowed
 
 __all__ = [
@@ -25,6 +25,7 @@ __all__ = [
     "IdempotencyStore",
     "InMemoryIdempotencyStore",
     "build_registry",
+    "RagContext",
     "WORKFLOW_ALLOWLISTS",
     "tool_allowed",
 ]

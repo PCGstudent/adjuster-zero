@@ -3,14 +3,21 @@ output is schema-validated data (thesis 1) — never a side effect. Phase 1 ship
 extraction + classification; planning is a fixed W1 template in the executor."""
 
 from .classify import classify_claim
+from .coverage import CoverageDetermination, apply_citation_floor, determine_coverage
 from .extract import extract_fnol_fields
 from .letter import draft_letter
 from .schemas import ClaimClassification, ExtractedField, FnolExtraction, LetterDraft
+from .tiebreak import TiebreakDecision, decide_tiebreak
 
 __all__ = [
     "extract_fnol_fields",
     "classify_claim",
     "draft_letter",
+    "determine_coverage",
+    "apply_citation_floor",
+    "decide_tiebreak",
+    "CoverageDetermination",
+    "TiebreakDecision",
     "ClaimClassification",
     "ExtractedField",
     "FnolExtraction",
