@@ -351,3 +351,39 @@ Format: ADR-NNN, date, context, decision, consequences.
     watch the per-model token-bucket admission control queue them (in-flight badge).
 - **Verified live:** vision sees an image; explain grounds in the trace; simulate
   default W1=12→ceiling-$10k W1=20 (STP 24%→40%); storm shows in-flight=5.
+
+### ADR-031 — Deterministic intake completeness + date/location on intake
+- **Date:** 2026-06-13
+- **Problem:** A photo (and any terse FNOL) carries the damage but not *when* or
+  *where* the loss happened, so every photo intake — and well-formed text claims —
+  routed to W4 (information request). Two root causes: (1) the live-flow/vision
+  intake had no way to supply loss_date / loss_location; (2) `completeness` that
+  gates R-01 was the LLM's *self-reported* `overall_completeness`, which scored a
+  fully-specified glass claim at 0.80 (< the 0.90 floor) → W4. The LLM was both
+  proposing AND disposing on a routing input — a thesis-1/2 violation hiding in
+  plain sight.
+- **Decision:**
+  1. **Completeness is now a deterministic projection** of the required intake
+     facts — `policy_number, loss_date, loss_location` — computed by the
+     orchestrator in `assess_completeness` (planner/extract.py), not taken from the
+     LLM. `peril` is the classifier's job and `description` is the narrative itself,
+     so neither gates completeness. `missing_required` is derived from the same
+     check, so the W4 request asks for exactly the absent facts. The raw LLM
+     self-score is still persisted in the decision record for observability.
+  2. **Intake endpoints accept `loss_date` + `loss_location`** (`inject_custom`,
+     `inject_vision`); `_compose_fnol` stitches them (and the policy number) into
+     the FNOL, idempotently (no duplication when the text already names them). The
+     extract node also folds a form-supplied policy number into the fields so
+     completeness reflects what we actually know, not only what the LLM re-read.
+  3. **Live-flow UI** gained a date picker + location field, pre-filled per preset.
+- **Why this set of three:** they are the intake facts an adjuster cannot proceed
+  without (who is covered, when, where); a missing one is precisely what you'd ask
+  the claimant for. With 3 fields the 0.90 floor cleanly means "all three present."
+- **Test fixtures:** four stubs that asserted W1/W2/W3/W5 routing carried no
+  `loss_location` and only passed on the fake LLM `1.0`; they represent *complete*
+  claims, so each gained a location. Added `tests/test_completeness.py` (5 tests)
+  pinning the new contract. The W4-resume test now arrives genuinely incomplete
+  (missing policy + date) rather than forcing `missing_required`.
+- **Verified:** `make test` 81 green; golden-set replay route_accuracy **1.0** (50
+  cases, unchanged mix); live — same FNOL without date/location → completeness 0.40
+  → W4, *with* date+location → completeness 1.0 → routes onward.

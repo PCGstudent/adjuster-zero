@@ -139,9 +139,13 @@ def test_w2_pay_modify_uses_my_amount() -> None:
 def test_w4_resume_to_closed() -> None:
     store = InMemoryClaimStore()
     saver = MemorySaver()
-    client = FakeClient(_extraction("POL-90013", peril="glass", complete=0.4), _cls("glass"))
-    # force missing_required so R-01 fires
-    client._e.missing_required = ["policy_number", "loss_date"]
+    # Arrives genuinely incomplete: we can see it's a glass loss and where, but not
+    # the policy number or loss date → deterministic completeness < 0.9 → R-01 → W4.
+    incomplete = FnolExtraction(
+        fields=[ExtractedField(name="loss_location", value="I-80 near Sacramento", confidence=0.9),
+                ExtractedField(name="peril", value="glass", confidence=0.95)],
+        missing_required=["policy_number", "loss_date"], overall_completeness=0.4)
+    client = FakeClient(incomplete, _cls("glass"))
     deps = _deps(client, store)
     agg = _agg("CLM-E", policy=None)
 

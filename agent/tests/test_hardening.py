@@ -48,6 +48,7 @@ def _glass(policy: str) -> FakeClient:
     ext = FnolExtraction(
         fields=[ExtractedField(name="policy_number", value=policy, confidence=0.99),
                 ExtractedField(name="loss_date", value="2026-06-08", confidence=0.95),
+                ExtractedField(name="loss_location", value="I-80 near Sacramento", confidence=0.9),
                 ExtractedField(name="peril", value="glass", confidence=0.96)],
         missing_required=[], overall_completeness=1.0)
     return FakeClient(ext, ClaimClassification(line="auto", peril="glass", severity=1,

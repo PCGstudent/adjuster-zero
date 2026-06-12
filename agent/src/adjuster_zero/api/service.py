@@ -149,7 +149,8 @@ async def inject_custom(
     store = get_store()
     settings = get_settings()
     planner = get_client() if settings.gemini_configured else OfflineGeminiClient(None)
-    fnol = _compose_fnol(fnol_text, loss_date=loss_date, loss_location=loss_location)
+    fnol = _compose_fnol(fnol_text, loss_date=loss_date, loss_location=loss_location,
+                         policy_number=policy_number)
     agg = ClaimAggregate(
         id=_new_claim_id(), fnol_text=fnol,
         claimant_id=claimant_id or "CLMT-DEMO", policy_number=policy_number,
@@ -166,15 +167,19 @@ async def inject_custom(
 def _compose_fnol(base: str, *, loss_date: str = "", loss_location: str = "",
                   note: str = "", policy_number: str | None = None) -> str:
     """Stitch a photo/text base with the metadata a photo can't carry (date,
-    location) so extraction reaches full completeness when the user supplies them."""
-    parts = [base.strip()]
-    if loss_date:
+    location, policy) so extraction reaches full completeness when the user supplies
+    them. Each fact is only appended when it isn't already present in the base, so a
+    free-text FNOL that already names the policy isn't duplicated."""
+    base = base.strip()
+    lower = base.lower()
+    parts = [base]
+    if loss_date and loss_date.lower() not in lower:
         parts.append(f"The loss occurred on {loss_date}.")
-    if loss_location:
+    if loss_location and loss_location.lower() not in lower:
         parts.append(f"Loss location: {loss_location}.")
     if note:
         parts.append(note)
-    if policy_number:
+    if policy_number and policy_number.lower() not in lower:
         parts.append(f"Policy {policy_number}.")
     return " ".join(p for p in parts if p)
 

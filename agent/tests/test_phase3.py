@@ -118,6 +118,7 @@ def test_uncited_grounded_determination_routes_to_human_review() -> None:
         ext = FnolExtraction(
             fields=[ExtractedField(name="policy_number", value="POL-88341", confidence=0.99),
                     ExtractedField(name="loss_date", value="2026-06-08", confidence=0.95),
+                    ExtractedField(name="loss_location", value="I-80 near Sacramento", confidence=0.9),
                     ExtractedField(name="peril", value="glass", confidence=0.96)],
             missing_required=[], overall_completeness=1.0)
         cls = ClaimClassification(line="auto", peril="glass", severity=1, complexity="low",
@@ -145,6 +146,7 @@ def test_journey_c_fraud_routes_w3_no_payment() -> None:
         ext = FnolExtraction(
             fields=[ExtractedField(name="policy_number", value="POL-55200", confidence=0.99),
                     ExtractedField(name="loss_date", value="2026-06-08", confidence=0.95),
+                    ExtractedField(name="loss_location", value="driveway, Oakland", confidence=0.9),
                     ExtractedField(name="peril", value="theft", confidence=0.95)],
             missing_required=[], overall_completeness=1.0)
         cls = ClaimClassification(line="auto", peril="theft", severity=2, complexity="low",
@@ -176,6 +178,7 @@ def test_degraded_mode_caps_w1_to_w2() -> None:
             ext = FnolExtraction(
                 fields=[ExtractedField(name="policy_number", value="POL-88341", confidence=0.99),
                         ExtractedField(name="loss_date", value="2026-06-08", confidence=0.95),
+                        ExtractedField(name="loss_location", value="I-80 near Sacramento", confidence=0.9),
                         ExtractedField(name="peril", value="glass", confidence=0.96)],
                 missing_required=[], overall_completeness=1.0)
             cls = ClaimClassification(line="auto", peril="glass", severity=1, complexity="low",

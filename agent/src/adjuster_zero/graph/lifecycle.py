@@ -41,6 +41,7 @@ from ..llm.errors import EscalateToHuman
 from ..persistence.store import ApprovalRecord, ClaimStore, DecisionRecord
 from ..planner import (
     apply_citation_floor,
+    assess_completeness,
     assess_narrative,
     classify_claim,
     decide_tiebreak,
@@ -102,13 +103,24 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         result, meta = await extract_fnol_fields(deps.planner, agg.fnol_text)
         fields = {f.name: f.value for f in result.fields if f.value is not None}
         field_conf = {f.name: f.confidence for f in result.fields}
+        # Fold in a policy number the caller supplied out-of-band (form field) so
+        # completeness reflects what we actually know, not only what the LLM re-read
+        # from the narrative.
+        if agg.policy_number and not fields.get("policy_number"):
+            fields["policy_number"] = agg.policy_number
+        # Completeness is computed deterministically from the required intake facts,
+        # not taken from the LLM's self-report (thesis 1/2). Missing list is derived
+        # from the same check, so the W4 request asks for exactly what's absent.
+        completeness, missing = assess_completeness(fields)
         extraction = Extraction(
             fields=fields, field_confidence=field_conf,
-            missing_required=result.missing_required, completeness=result.overall_completeness,
+            missing_required=missing, completeness=completeness,
         )
         await store.record_decision(DecisionRecord(
             claim_id=agg.id, decision_type="extract", model=meta.model,
-            output=result.model_dump(), confidence=result.overall_completeness,
+            output={**result.model_dump(), "deterministic_completeness": completeness,
+                    "deterministic_missing": missing},
+            confidence=completeness,
             guardrails={"schema_ok": True, "repaired": meta.repaired},
             tokens_in=meta.tokens_in, tokens_out=meta.tokens_out, latency_ms=meta.latency_ms,
             trace_id=agg.trace_id,
