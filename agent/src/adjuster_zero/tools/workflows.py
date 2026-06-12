@@ -10,22 +10,31 @@ from __future__ import annotations
 
 from ..domain.states import Workflow
 
-# Phase 1 tool set. Later phases extend these lists (fraud_signal_scan,
-# document_request_create, escalate_to_human, etc.).
-_READ_ONLY = {"policy_lookup", "coverage_check", "repair_cost_estimator"}
+# Read-only (T0) investigation tools — allowed in every workflow (and during
+# pre-routing triage via the executor's workflow=None path).
+_READ_ONLY = {
+    "policy_lookup", "coverage_check", "repair_cost_estimator",
+    "claim_history", "duplicate_claim_check", "fraud_signal_scan",
+}
 
 WORKFLOW_ALLOWLISTS: dict[Workflow, frozenset[str]] = {
-    # W1 STP — the ONLY workflow that may execute a payment.
+    # W1 STP — pays via the tier-0 policy gate (policy_gate_ref).
     Workflow.W1: frozenset(_READ_ONLY | {"reserve_set", "payment_execute", "customer_comm_send"}),
-    # W2 standard adjudication — investigate, reserve, draft comms; pay only after
-    # human approval (Phase 2 adds approval_ref-gated payment back via the gate).
-    Workflow.W2: frozenset(_READ_ONLY | {"reserve_set", "customer_comm_send"}),
-    # W3 fraud — read-only analysis only; NO reserve, NO payment, NO send.
-    Workflow.W3: frozenset(_READ_ONLY),
-    # W4 information request — gather + request documents + draft comms.
-    Workflow.W4: frozenset(_READ_ONLY | {"customer_comm_send"}),
-    # W5 high-severity escalation — read-only; a human adjuster owns it.
-    Workflow.W5: frozenset(_READ_ONLY | {"customer_comm_send"}),
+    # W2 standard adjudication — pays ONLY after human approval (approval_ref).
+    # payment_execute is allowed here, but PaymentAuthorization makes an ungated
+    # call unrepresentable and the graph only builds an approval_ref post-approval.
+    Workflow.W2: frozenset(
+        _READ_ONLY | {"reserve_set", "payment_execute", "customer_comm_send", "escalate_to_human"}
+    ),
+    # W3 fraud — read-only analysis + escalate ONLY. NO reserve/payment/send:
+    # no payment edge is reachable from W3, by allow-list (and by graph topology).
+    Workflow.W3: frozenset(_READ_ONLY | {"escalate_to_human"}),
+    # W4 information request — gather, request documents, draft comms, escalate.
+    Workflow.W4: frozenset(
+        _READ_ONLY | {"customer_comm_send", "document_request_create", "escalate_to_human"}
+    ),
+    # W5 high-severity escalation — read-only + draft comms + escalate to a human.
+    Workflow.W5: frozenset(_READ_ONLY | {"customer_comm_send", "escalate_to_human"}),
 }
 
 

@@ -54,9 +54,11 @@ def _pay_args(key: str = "CLM-1-pay-1") -> PaymentExecuteArgs:
     )
 
 
-# ── No payment edge reachable off W1 (allow-list) ────────────────────────────
-@pytest.mark.parametrize("wf", [Workflow.W2, Workflow.W3, Workflow.W4, Workflow.W5])
-def test_payment_not_allowed_off_w1(wf: Workflow) -> None:
+# ── No payment edge reachable from fraud / info / high-severity (allow-list) ──
+# W1 pays via the tier-0 gate; W2 pays only after human approval (approval_ref).
+# W3/W4/W5 have NO payment edge — structurally rejected by the executor.
+@pytest.mark.parametrize("wf", [Workflow.W3, Workflow.W4, Workflow.W5])
+def test_payment_unreachable_from_w3_w4_w5(wf: Workflow) -> None:
     ex = ToolExecutor(build_registry())
 
     async def run() -> None:
@@ -66,12 +68,13 @@ def test_payment_not_allowed_off_w1(wf: Workflow) -> None:
     asyncio.run(run())
 
 
-def test_payment_allowed_on_w1() -> None:
+def test_payment_allowed_on_w1_and_w2() -> None:
     ex = ToolExecutor(build_registry())
 
     async def run() -> None:
-        res = await ex.execute(Workflow.W1, "payment_execute", _pay_args(), claim_id="CLM-1")
-        assert res.ok and res.data["status"] == "settled"
+        for wf in (Workflow.W1, Workflow.W2):
+            res = await ex.execute(wf, "payment_execute", _pay_args(f"k-{wf}"), claim_id="CLM-1")
+            assert res.ok and res.data["status"] == "settled"
 
     asyncio.run(run())
 

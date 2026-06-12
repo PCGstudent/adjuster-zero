@@ -1,4 +1,4 @@
-import type { Claim, ClaimDetail, Scenario } from "./types";
+import type { Approval, Claim, ClaimDetail, Scenario } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:8080";
 
@@ -8,18 +8,25 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 export const agent = {
   base: BASE,
   scenarios: () => get<Scenario[]>("/api/scenarios"),
   claims: () => get<Claim[]>("/api/claims"),
   claim: (id: string) => get<ClaimDetail>(`/api/claims/${id}`),
-  inject: async (scenario_key: string): Promise<{ claim_id: string }> => {
-    const res = await fetch(`${BASE}/api/claims/inject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario_key }),
-    });
-    if (!res.ok) throw new Error(`inject → ${res.status}`);
-    return res.json();
-  },
+  inject: (scenario_key: string) => post<{ claim_id: string }>("/api/claims/inject", { scenario_key }),
+  approvals: () => get<Approval[]>("/api/approvals"),
+  resolve: (id: string, body: { resolution: string; delta?: unknown; reason_code?: string }) =>
+    post<{ claim_id: string }>(`/api/approvals/${id}/resolve`, { ...body, resolved_by: "operator" }),
+  submitDocuments: (claimId: string, fields: Record<string, unknown>) =>
+    post<{ claim_id: string }>(`/api/claims/${claimId}/documents`, { fields }),
 };

@@ -40,3 +40,10 @@ class ClaimClassification(BaseModel):
     attorney_flag: bool = False
     confidence: float = Field(ge=0, le=1)
     alternatives: list[ClassAlt] = Field(default_factory=list)
+
+
+class LetterDraft(BaseModel):
+    """A drafted customer letter (e.g. a denial). flash via GeminiClient."""
+
+    subject: str
+    body: str

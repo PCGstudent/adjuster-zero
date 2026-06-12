@@ -30,6 +30,18 @@ class DecisionRecord(BaseModel):
     trace_id: str | None = None
 
 
+class ApprovalRecord(BaseModel):
+    """A pending human-approval task (blueprint Part 3 approval layer)."""
+
+    id: str
+    claim_id: str
+    requested_action: dict[str, Any]
+    risk_tier: int = 2
+    evidence_refs: list[str] = Field(default_factory=list)
+    confidence: float | None = None
+    sla_at: str | None = None
+
+
 class ClaimStore(Protocol):
     async def upsert_claim(self, agg: ClaimAggregate) -> None: ...
     async def append_event(self, ev: ClaimEvent) -> None: ...
@@ -50,3 +62,17 @@ class ClaimStore(Protocol):
     async def get_events(self, claim_id: str) -> list[dict[str, Any]]: ...
     async def get_decisions(self, claim_id: str) -> list[dict[str, Any]]: ...
     async def get_tool_calls(self, claim_id: str) -> list[dict[str, Any]]: ...
+
+    # approvals (HITL)
+    async def create_approval(self, appr: ApprovalRecord) -> None: ...
+    async def get_approval(self, approval_id: str) -> dict[str, Any] | None: ...
+    async def list_pending_approvals(self) -> list[dict[str, Any]]: ...
+    async def resolve_approval(
+        self,
+        approval_id: str,
+        *,
+        resolution: str,
+        delta: dict[str, Any] | None,
+        reason_code: str | None,
+        resolved_by: str | None,
+    ) -> None: ...

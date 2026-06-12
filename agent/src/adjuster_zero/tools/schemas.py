@@ -153,3 +153,93 @@ class CommSendResult(BaseModel):
     message_id: str | None = None
     rendered_preview: str
     sent: bool = False
+
+
+# ── T-07 claim_history (T0, idempotent) ──────────────────────────────────────
+class ClaimHistoryArgs(BaseModel):
+    claimant_id: str
+
+
+class PriorClaim(BaseModel):
+    claim_id: str
+    date: str
+    peril: str
+    paid: float
+
+
+class ClaimHistoryResult(BaseModel):
+    prior_claims: list[PriorClaim] = Field(default_factory=list)
+    count_24m: int = 0
+    first_seen: bool = True
+    recent_coverage_increase: bool = False
+
+
+# ── T-06 duplicate_claim_check (T0, idempotent; exact-match in Phase 2) ───────
+class DuplicateCheckArgs(BaseModel):
+    claim_id: str
+    claimant_id: str
+    narrative: str = ""
+    peril: str = ""
+    loss_date: str = ""
+
+
+class SemanticMatch(BaseModel):
+    claim_id: str
+    similarity: float
+
+
+class DuplicateCheckResult(BaseModel):
+    exact_matches: list[str] = Field(default_factory=list)
+    semantic_matches: list[SemanticMatch] = Field(default_factory=list)
+    degraded: bool = False  # set if the vector index is unavailable (Phase 3)
+
+
+# ── T-05 fraud_signal_scan (T0; rules-only in Phase 2) ───────────────────────
+class FraudScanArgs(BaseModel):
+    claim_id: str
+    prior_count_24m: int = 0
+    exact_duplicate: bool = False
+    recent_coverage_increase: bool = False
+    first_seen: bool = False
+    narrative_similarity: float = 0.0  # Phase 3 semantic duplicate signal
+
+
+class FraudSignal(BaseModel):
+    code: str
+    weight: float
+    evidence: str
+
+
+class FraudScanResult(BaseModel):
+    score: float = Field(ge=0, le=1)
+    signals: list[FraudSignal] = Field(default_factory=list)
+    degraded: bool = False
+
+
+# ── T-15 document_request_create (T1) ────────────────────────────────────────
+class DocRequestArgs(BaseModel):
+    claim_id: str
+    doc_types: list[str]
+    due_days: int = 14
+
+
+class DocRequestResult(BaseModel):
+    request_id: str
+    portal_url: str
+    expires_at: str
+
+
+# ── T-18 escalate_to_human (T1, the universal exit) ──────────────────────────
+class EscalateArgs(BaseModel):
+    claim_id: str
+    reason_code: str
+    risk_tier: int = 1
+    summary: str
+    requested_action: dict[str, Any] | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
+class EscalateResult(BaseModel):
+    task_id: str
+    queue: str
+    sla_at: str

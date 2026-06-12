@@ -56,6 +56,21 @@ CLAIMANTS: dict[str, dict[str, Any]] = {
 }
 
 
+# Mock prior-claims history (for claim_history / duplicate_claim_check / fraud).
+# Phase 1/2 claimants are clean; the fraud_suspect claimant is seeded in Phase 3.
+CLAIM_HISTORY: dict[str, list[dict[str, Any]]] = {
+    "CLMT-001": [],
+    "CLMT-002": [
+        {"claim_id": "CLM-2025-04412", "date": "2025-02-10", "peril": "collision",
+         "paid": 1800, "narrative": "Rear-ended at a stop light, bumper damage."},
+    ],
+    "CLMT-003": [],
+}
+
+# Claimants whose policy limit was raised shortly before the loss (fraud signal).
+RECENT_COVERAGE_INCREASE: set[str] = set()
+
+
 class Scenario(BaseModel):
     key: str
     title: str

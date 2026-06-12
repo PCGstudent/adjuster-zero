@@ -9,7 +9,13 @@ from typing import Any
 
 from ..llm import GeminiClient, TaskKind
 from ..llm.client import EventSink, LLMCallMeta
-from ..planner.schemas import ClaimClassification, ClassAlt, ExtractedField, FnolExtraction
+from ..planner.schemas import (
+    ClaimClassification,
+    ClassAlt,
+    ExtractedField,
+    FnolExtraction,
+    LetterDraft,
+)
 from .data import Scenario
 
 
@@ -46,10 +52,26 @@ def build_offline_outputs(s: Scenario) -> tuple[FnolExtraction, ClaimClassificat
     return extraction, classification
 
 
+def _generic_outputs() -> tuple[FnolExtraction, ClaimClassification]:
+    """Fallback when no scenario is bound (e.g. resuming a paused graph, where
+    extract/classify are already checkpointed and won't re-run)."""
+    extraction = FnolExtraction(
+        fields=[ExtractedField(name="description", value="claim", confidence=0.9)],
+        missing_required=[],
+        overall_completeness=1.0,
+    )
+    classification = ClaimClassification(
+        line="auto", peril="other", severity=2, complexity="med", confidence=0.9
+    )
+    return extraction, classification
+
+
 class OfflineGeminiClient(GeminiClient):
-    def __init__(self, scenario: Scenario) -> None:
+    def __init__(self, scenario: Scenario | None = None) -> None:
         super().__init__(api_key="offline")
-        self._extraction, self._classification = build_offline_outputs(scenario)
+        self._extraction, self._classification = (
+            build_offline_outputs(scenario) if scenario else _generic_outputs()
+        )
 
     async def generate_structured(
         self,
@@ -64,4 +86,14 @@ class OfflineGeminiClient(GeminiClient):
         meta = LLMCallMeta(model="offline", tokens_in=150, tokens_out=60, latency_ms=5)
         if task == TaskKind.EXTRACT:
             return self._extraction, meta
+        if task == TaskKind.LETTER:
+            letter = LetterDraft(
+                subject="Regarding your claim",
+                body=(
+                    "Dear claimant, we have reviewed your claim. Based on the policy "
+                    "facts on file, we are writing to inform you of our determination. "
+                    "Please see the claim record for details and your options."
+                ),
+            )
+            return letter, meta
         return self._classification, meta

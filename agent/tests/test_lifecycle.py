@@ -19,6 +19,7 @@ from adjuster_zero.planner.schemas import (
     ClassAlt,
     ExtractedField,
     FnolExtraction,
+    LetterDraft,
 )
 from adjuster_zero.router import RoutingConfig
 from adjuster_zero.seed.data import get_scenario
@@ -26,7 +27,7 @@ from adjuster_zero.tools import ToolExecutor, build_registry
 
 
 class FakeGeminiClient(GeminiClient):
-    """Returns canned extraction/classification by schema type."""
+    """Returns canned extraction / classification / letter by task type."""
 
     def __init__(self, extraction: FnolExtraction, classification: ClaimClassification) -> None:
         super().__init__(api_key="fake")
@@ -37,6 +38,8 @@ class FakeGeminiClient(GeminiClient):
         meta = LLMCallMeta(model="gemini-2.5-flash-lite", tokens_in=200, tokens_out=80, latency_ms=120)
         if task == TaskKind.EXTRACT:
             return self._extraction, meta
+        if task == TaskKind.LETTER:
+            return LetterDraft(subject="Your claim", body="We have reviewed your claim."), meta
         return self._classification, meta
 
 
@@ -103,26 +106,31 @@ def test_journey_a_clean_glass_closes() -> None:
     asyncio.run(run())
 
 
-def test_journey_b_lapsed_policy_parks_no_payment() -> None:
+def test_journey_b_lapsed_policy_pauses_for_review_no_payment() -> None:
+    from langgraph.checkpoint.memory import MemorySaver
+
     store = InMemoryClaimStore()
-    # lapsed policy uses the lapsed extraction (policy POL-77120)
     extraction = _clean_extraction().model_copy()
     extraction.fields[0] = ExtractedField(name="policy_number", value="POL-77120", confidence=0.99)
     client = FakeGeminiClient(extraction, _glass_classification())
 
     async def run() -> None:
-        final = await run_claim(_agg("lapsed_policy"), _deps(client, store))
+        # W2 now pauses at the approval gate (interrupt) → needs a checkpointer.
+        final = await run_claim(_agg("lapsed_policy"), _deps(client, store), checkpointer=MemorySaver())
         assert final.workflow is Workflow.W2
         assert final.rule_id == "R-02"
         assert final.state is ClaimState.REVIEW_PENDING
-        # No payment ever executed — structurally unreachable off W1.
+        # A pending approval was created; no payment ever executed.
+        assert len(await store.list_pending_approvals()) == 1
         assert "payment_execute" not in [t["tool"] for t in store.tool_calls]
         assert final.financials.paid == 0
 
     asyncio.run(run())
 
 
-def test_journey_e_missing_docs_info_loop() -> None:
+def test_journey_e_missing_docs_pauses_info_pending() -> None:
+    from langgraph.checkpoint.memory import MemorySaver
+
     store = InMemoryClaimStore()
     extraction = FnolExtraction(
         fields=[ExtractedField(name="description", value="accident, car damaged", confidence=0.6)],
@@ -135,7 +143,7 @@ def test_journey_e_missing_docs_info_loop() -> None:
     client = FakeGeminiClient(extraction, classification)
 
     async def run() -> None:
-        final = await run_claim(_agg("missing_docs"), _deps(client, store))
+        final = await run_claim(_agg("missing_docs"), _deps(client, store), checkpointer=MemorySaver())
         assert final.workflow is Workflow.W4
         assert final.rule_id == "R-01"
         assert final.state is ClaimState.INFO_PENDING

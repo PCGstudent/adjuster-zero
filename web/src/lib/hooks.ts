@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { agent } from "./agent";
 import { getSupabase } from "./supabase";
-import type { Claim, ClaimDetail } from "./types";
+import type { Approval, Claim, ClaimDetail } from "./types";
 
 /**
  * Live claims queue. Primary signal is Supabase Realtime on the `claims` table
@@ -64,4 +64,28 @@ export function useClaimDetail(id: string): ClaimDetail | null {
   }, [id, refresh]);
 
   return detail;
+}
+
+/** Live approval inbox. Realtime on the approvals table + slow poll backstop. */
+export function useApprovals(): { approvals: Approval[]; refresh: () => void } {
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const refresh = useCallback(() => {
+    agent.approvals().then(setApprovals).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const poll = setInterval(refresh, 3000);
+    const sb = getSupabase();
+    const channel = sb
+      ?.channel("approvals-inbox")
+      .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, refresh)
+      .subscribe();
+    return () => {
+      clearInterval(poll);
+      if (sb && channel) sb.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  return { approvals, refresh };
 }

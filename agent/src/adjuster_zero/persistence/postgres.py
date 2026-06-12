@@ -14,7 +14,7 @@ from psycopg.types.json import Json
 from .. import db
 from ..domain.aggregate import ClaimAggregate
 from ..domain.events import ClaimEvent
-from .store import DecisionRecord
+from .store import ApprovalRecord, DecisionRecord
 
 
 class PostgresIdempotencyStore:
@@ -225,3 +225,50 @@ class PostgresClaimStore:
         return await self._query(
             "SELECT * FROM tool_calls WHERE claim_id = %s ORDER BY ts", (claim_id,)
         )
+
+    async def create_approval(self, appr: ApprovalRecord) -> None:
+        pool = db.get_pool()
+        if pool is None:
+            return
+        async with pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO approvals (id, claim_id, requested_action, risk_tier,
+                    evidence_refs, confidence, status, sla_at)
+                VALUES (%s,%s,%s,%s,%s,%s,'pending',%s)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (appr.id, appr.claim_id, Json(appr.requested_action), appr.risk_tier,
+                 Json(appr.evidence_refs), appr.confidence, appr.sla_at),
+            )
+
+    async def get_approval(self, approval_id: str) -> dict[str, Any] | None:
+        rows = await self._query("SELECT * FROM approvals WHERE id = %s", (approval_id,))
+        return rows[0] if rows else None
+
+    async def list_pending_approvals(self) -> list[dict[str, Any]]:
+        return await self._query(
+            "SELECT * FROM approvals WHERE status = 'pending' ORDER BY sla_at NULLS LAST, created_at"
+        )
+
+    async def resolve_approval(
+        self, approval_id: str, *, resolution: str, delta: dict[str, Any] | None,
+        reason_code: str | None, resolved_by: str | None,
+    ) -> None:
+        pool = db.get_pool()
+        if pool is None:
+            return
+        status = {"approve": "approved", "modify": "modified", "reject": "rejected"}[resolution]
+        resolver = None
+        if resolved_by:
+            # resolved_by is a users.id UUID when supplied; else leave null.
+            resolver = resolved_by
+        async with pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                UPDATE approvals SET status=%s, resolution=%s, delta=%s, reason_code=%s,
+                    resolved_by=%s, resolved_at=now()
+                WHERE id=%s
+                """,
+                (status, resolution, Json(delta), reason_code, resolver, approval_id),
+            )

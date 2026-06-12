@@ -42,7 +42,10 @@ async def run_scenario(scenario: Scenario) -> None:
         claimant_id=scenario.claimant_id,
         policy_number=scenario.policy_number,
     )
-    final = await run_claim(agg, deps)
+    # W2/W4 pause at a human gate (interrupt) → a checkpointer is required.
+    from langgraph.checkpoint.memory import MemorySaver
+
+    final = await run_claim(agg, deps, checkpointer=MemorySaver())
 
     print(f"\n=== {scenario.title} ({scenario.key}) ===")
     for e in store.events:

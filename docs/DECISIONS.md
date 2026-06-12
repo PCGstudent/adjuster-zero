@@ -136,3 +136,61 @@ Format: ADR-NNN, date, context, decision, consequences.
   fail-closed gate, fraud scan, citations/confidence-floor, full R-00..R-99,
   approvals/HITL → their respective phases (2/3). Replan counter exists but is
   unexercised until the Phase 2 replan edge.
+
+---
+
+## Phase 2 — Full routing + human-in-the-loop (Journeys B & D)
+
+### ADR-010 — Full router R-00..R-99; R-06 tiebreak deferred
+- **Date:** 2026-06-12
+- **Decision:** Implemented all rules R-00..R-99 in the pure function. R-06
+  (ambiguous fraud band 0.30–0.70) returns the conservative W2 default and sets
+  `needs_tiebreak=True`; the LLM-with-RAG tiebreak that may override within the
+  band is Phase 3 (keeps the router pure now). Exhaustive table-driven tests
+  cover every rule, precedence, and config-driven thresholds.
+
+### ADR-011 — HITL via interrupt() + checkpointer (= waitForTaskToken)
+- **Date:** 2026-06-12
+- **Context:** Durable human approval at zero compute cost while paused.
+- **Decision:** W2 splits into `w2_propose` (create approval + draft denial
+  letter / set reserve — runs once on the forward pass) and `w2_await` (calls
+  `interrupt()` FIRST, so resume re-runs only this node and never double-fires
+  the propose side effects). The resolve endpoint resumes with
+  `Command(resume={resolution, delta, ...})`. W4 mirrors this for the document
+  loop. This is the LangGraph analogue of Step Functions `waitForTaskToken`;
+  state lives in the Postgres checkpointer, so a paused claim survives an
+  agent-service restart — proven by `test_restart_survival_resumes_paused_claim`
+  (fresh deps/executor, same checkpointer → resumes).
+- **Consequences:** interrupt requires a checkpointer; the API always supplies
+  one (PostgresSaver with a DB, a shared MemorySaver locally).
+
+### ADR-012 — Payment gate widened to W2 (approval_ref), still structural
+- **Date:** 2026-06-12
+- **Decision:** `payment_execute` is now allow-listed in W1 (tier-0
+  `policy_gate_ref`) AND W2, but the W2 path only constructs
+  `PaymentAuthorization(approval_ref=appr_id)` AFTER `resolve_approval` returns —
+  i.e. after a human signs. W3/W4/W5 have no payment edge (allow-list + graph
+  topology). The structural guarantee (ungated payment unrepresentable) is
+  unchanged; the W2 ref is a human approval rather than a policy gate.
+
+### ADR-013 — Modify captures a structured delta + reason code
+- **Date:** 2026-06-12
+- **Decision:** On Modify, the inbox sends `delta` (e.g. `{"amount": 2000}`) +
+  `reason_code`; the settlement uses the operator's amount, and the delta/reason
+  persist on the approval row — the override data that feeds the Phase 4
+  calibration chart. Proven by `test_w2_pay_modify_uses_my_amount`.
+
+### ADR-014 — pg_cron timers write events
+- **Date:** 2026-06-12
+- **Decision:** `002_timers.sql` schedules a 72h document-reminder job and a 15-
+  minute approval-SLA job; each INSERTs a `claim_events` row (event-sourced), so
+  reminders/breaches appear on the live timeline like any other transition.
+
+### ADR-015 — Phase 2 guardian outcome + fixes
+- **Date:** 2026-06-12
+- **Outcome:** Verdict **PASS WITH WARNINGS**, no blockers. Fixes applied:
+  folded the W1 mid-EXECUTING financial accrual into the `settle` commit (no
+  projection write without an event, thesis 5); added a `_check_budget` after the
+  W2 denial-letter token accrual (thesis 6 symmetry). Deferred per scope:
+  citation-coverage confidence floor (Phase 3), full rail reconcile-before-retry
+  and sanctions fail-closed gate (Phase 4/later).

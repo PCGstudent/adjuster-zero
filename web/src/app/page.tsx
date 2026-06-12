@@ -6,6 +6,7 @@ import { Loader2, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Nav } from "@/components/nav";
 import { agent } from "@/lib/agent";
 import { useClaims } from "@/lib/hooks";
 import type { Scenario } from "@/lib/types";
@@ -35,8 +36,8 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      <Nav />
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Adjuster Zero</h1>
         <p className="text-sm text-muted-foreground">
           An autonomous claims department with a paper trail — watch the agent decide, live.
         </p>

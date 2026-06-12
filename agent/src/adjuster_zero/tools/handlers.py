@@ -9,17 +9,29 @@ from __future__ import annotations
 
 import datetime as dt
 
-from ..seed.data import POLICIES
+from ..seed.data import CLAIM_HISTORY, POLICIES, RECENT_COVERAGE_INCREASE
 from .base import ToolFailure
 from .schemas import (
+    ClaimHistoryArgs,
+    ClaimHistoryResult,
     CommSendArgs,
     CommSendResult,
     CoverageCheckArgs,
     CoverageCheckResult,
+    DocRequestArgs,
+    DocRequestResult,
+    DuplicateCheckArgs,
+    DuplicateCheckResult,
+    EscalateArgs,
+    EscalateResult,
+    FraudScanArgs,
+    FraudScanResult,
+    FraudSignal,
     PaymentExecuteArgs,
     PaymentExecuteResult,
     PolicyLookupArgs,
     PolicyLookupResult,
+    PriorClaim,
     RepairCostArgs,
     RepairCostResult,
     RepairLineItem,
@@ -134,6 +146,8 @@ _TEMPLATES = {
     "denial_lapsed": "Dear {holder}, we reviewed claim {claim_id}. Coverage was not in "
     "force on the loss date, so we are unable to pay this claim. {rationale}",
     "info_request": "Dear claimant, to proceed with claim {claim_id} we need: {doc_types}.",
+    # free_text renders an LLM-drafted body verbatim (used for flash-drafted letters).
+    "free_text": "{body}",
 }
 
 
@@ -149,8 +163,77 @@ async def customer_comm_send(args: CommSendArgs) -> CommSendResult:
         ) from exc
     draft_id = f"draft_{args.claim_id}_{args.template_id}"
     if args.mode == "send":
-        # Phase 1: 'send' writes to the comms thread + console; no real email.
+        # 'send' writes to the comms thread + console; no real email (cut list).
         return CommSendResult(
             draft_id=draft_id, message_id=f"msg_{draft_id}", rendered_preview=preview, sent=True
         )
     return CommSendResult(draft_id=draft_id, rendered_preview=preview, sent=False)
+
+
+def _within_24m(date: str, loss_date: str) -> bool:
+    try:
+        d = dt.date.fromisoformat(date)
+        ref = dt.date.fromisoformat(loss_date) if loss_date else dt.date(2026, 6, 12)
+    except ValueError:
+        return True
+    return (ref - d).days <= 730
+
+
+async def claim_history(args: ClaimHistoryArgs) -> ClaimHistoryResult:
+    history = CLAIM_HISTORY.get(args.claimant_id, [])
+    priors = [
+        PriorClaim(claim_id=h["claim_id"], date=h["date"], peril=h["peril"], paid=h["paid"])
+        for h in history
+    ]
+    return ClaimHistoryResult(
+        prior_claims=priors,
+        count_24m=len(priors),
+        first_seen=len(priors) == 0,
+        recent_coverage_increase=args.claimant_id in RECENT_COVERAGE_INCREASE,
+    )
+
+
+async def duplicate_claim_check(args: DuplicateCheckArgs) -> DuplicateCheckResult:
+    # Phase 2: exact-match only (same claimant + same peril + within date window).
+    # Semantic (narrative embedding) matching arrives in Phase 3.
+    history = CLAIM_HISTORY.get(args.claimant_id, [])
+    exact = [
+        h["claim_id"]
+        for h in history
+        if args.peril and h["peril"] == args.peril and _within_24m(h["date"], args.loss_date)
+    ]
+    return DuplicateCheckResult(exact_matches=exact)
+
+
+async def fraud_signal_scan(args: FraudScanArgs) -> FraudScanResult:
+    # Rules-only v1: weighted, itemized signals with evidence (Part 4 T-05).
+    signals: list[FraudSignal] = []
+    if args.exact_duplicate:
+        signals.append(FraudSignal(code="DUP_EXACT", weight=0.35, evidence="exact duplicate claim found"))
+    if args.narrative_similarity >= 0.85:
+        signals.append(FraudSignal(
+            code="DUP_NARRATIVE", weight=0.35,
+            evidence=f"narrative cosine {args.narrative_similarity:.2f}"))
+    if args.recent_coverage_increase:
+        signals.append(FraudSignal(code="RECENT_COVERAGE_INCREASE", weight=0.20,
+                                   evidence="coverage limit raised shortly before loss"))
+    if args.prior_count_24m >= 3:
+        signals.append(FraudSignal(code="FREQUENT_CLAIMS", weight=0.20,
+                                   evidence=f"{args.prior_count_24m} claims in 24 months"))
+    if args.first_seen:
+        signals.append(FraudSignal(code="FIRST_SEEN", weight=0.05, evidence="no prior history"))
+    score = min(1.0, round(sum(s.weight for s in signals), 2))
+    return FraudScanResult(score=score, signals=signals)
+
+
+async def document_request_create(args: DocRequestArgs) -> DocRequestResult:
+    return DocRequestResult(
+        request_id=f"docreq_{args.claim_id}",
+        portal_url=f"https://portal.example/claims/{args.claim_id}/upload",
+        expires_at="2026-06-26T00:00:00Z",
+    )
+
+
+async def escalate_to_human(args: EscalateArgs) -> EscalateResult:
+    queue = {"W3": "siu", "W5": "senior_adjuster"}.get(args.reason_code, "ops")
+    return EscalateResult(task_id=f"task_{args.claim_id}", queue=queue, sla_at="2026-06-13T00:00:00Z")

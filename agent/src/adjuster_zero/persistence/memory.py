@@ -7,7 +7,7 @@ from typing import Any
 
 from ..domain.aggregate import ClaimAggregate
 from ..domain.events import ClaimEvent
-from .store import DecisionRecord
+from .store import ApprovalRecord, DecisionRecord
 
 
 def _now() -> str:
@@ -21,6 +21,7 @@ class InMemoryClaimStore:
         self.decisions: list[dict[str, Any]] = []
         self.tool_calls: list[dict[str, Any]] = []
         self.executions: dict[str, dict[str, Any]] = {}
+        self.approvals: dict[str, dict[str, Any]] = {}
         self._seq = 0
 
     async def upsert_claim(self, agg: ClaimAggregate) -> None:
@@ -90,3 +91,34 @@ class InMemoryClaimStore:
 
     async def get_tool_calls(self, claim_id: str) -> list[dict[str, Any]]:
         return [t for t in self.tool_calls if t.get("claim_id") == claim_id]
+
+    async def create_approval(self, appr: ApprovalRecord) -> None:
+        self.approvals[appr.id] = {
+            **appr.model_dump(),
+            "status": "pending",
+            "resolution": None,
+            "delta": None,
+            "reason_code": None,
+            "resolved_by": None,
+            "created_at": _now(),
+            "resolved_at": None,
+        }
+
+    async def get_approval(self, approval_id: str) -> dict[str, Any] | None:
+        return self.approvals.get(approval_id)
+
+    async def list_pending_approvals(self) -> list[dict[str, Any]]:
+        return [a for a in self.approvals.values() if a["status"] == "pending"]
+
+    async def resolve_approval(
+        self, approval_id: str, *, resolution: str, delta: dict[str, Any] | None,
+        reason_code: str | None, resolved_by: str | None,
+    ) -> None:
+        a = self.approvals.get(approval_id)
+        if a is None:
+            return
+        status = {"approve": "approved", "modify": "modified", "reject": "rejected"}[resolution]
+        a.update({
+            "status": status, "resolution": resolution, "delta": delta,
+            "reason_code": reason_code, "resolved_by": resolved_by, "resolved_at": _now(),
+        })

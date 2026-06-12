@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ChevronRight, Wrench, GitBranch, Brain, CircleDot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { agent } from "@/lib/agent";
 import { useClaimDetail } from "@/lib/hooks";
 import type { AgentDecision, ClaimEvent, ToolCall } from "@/lib/types";
 
@@ -131,6 +133,21 @@ export default function ClaimPage() {
           {claim.line ?? "—"}/{claim.peril ?? "—"} · conf {claim.confidence ?? "—"} · fraud{" "}
           {claim.fraud_score ?? "—"}
         </span>
+        {claim.state === "INFO_PENDING" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              agent.submitDocuments(claim.id, {
+                policy_number: "POL-90013",
+                loss_date: "2026-06-05",
+                loss_location: "Main St",
+              })
+            }
+          >
+            Simulate document upload
+          </Button>
+        )}
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr]">

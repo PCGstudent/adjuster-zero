@@ -25,6 +25,7 @@ class EventType(StrEnum):
     SETTLED = "claim.settled"
     CLOSED = "claim.closed"
     PARKED = "claim.parked"
+    DOCUMENT_RECEIVED = "claim.document_received"
     DENIED = "claim.denied"
     ESCALATED = "claim.escalated"
     FAILED = "claim.failed"
@@ -36,6 +37,9 @@ class EventType(StrEnum):
     # approvals (Phase 2)
     APPROVAL_REQUESTED = "approval.requested"
     APPROVAL_RESOLVED = "approval.resolved"
+    APPROVAL_SLA_BREACH = "approval.sla_breach"
+    # timers (pg_cron)
+    REMINDER = "claim.reminder"
     # control / observability
     BUDGET_EXHAUSTED = "claim.budget_exhausted"
     REPLAN_LIMIT = "claim.replan_limit"

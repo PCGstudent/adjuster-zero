@@ -65,3 +65,19 @@ export interface Scenario {
   title: string;
   expected_route: string | null;
 }
+
+export interface Approval {
+  id: string;
+  claim_id: string;
+  requested_action: {
+    type: string;
+    amount?: number;
+    reason?: string;
+    payee_id?: string;
+  };
+  risk_tier: number;
+  confidence: number | null;
+  status: string;
+  created_at: string;
+  sla_at: string | null;
+}

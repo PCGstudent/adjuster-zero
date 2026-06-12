@@ -1,19 +1,22 @@
-"""Service layer: build lifecycle deps and run a claim.
+"""Service layer: build lifecycle deps, run a claim, and resume a paused one.
 
-When Supabase is configured we use PostgresClaimStore + AsyncPostgresSaver (the
-live dashboard reads via Realtime). Without a DB we fall back to a process-local
-in-memory store so the API still runs for a quick smoke test (no Realtime, but
-the queue/detail reads work by polling).
+With Supabase we use PostgresClaimStore + AsyncPostgresSaver (paused claims
+survive a restart; the dashboard reads via Realtime). Without a DB we use a
+process-local in-memory store + a shared MemorySaver so interrupt/resume still
+works in-process for a local smoke test.
 """
 
 from __future__ import annotations
 
 import asyncio
 import uuid
+from typing import Any
+
+from langgraph.checkpoint.memory import MemorySaver
 
 from ..config import get_settings
 from ..domain.aggregate import ClaimAggregate
-from ..graph.lifecycle import LifecycleDeps, run_claim
+from ..graph.lifecycle import LifecycleDeps, resume_claim, run_claim
 from ..llm import GeminiClient, get_client
 from ..persistence import InMemoryClaimStore, load_routing_config
 from ..persistence.postgres import PostgresClaimStore, PostgresIdempotencyStore
@@ -22,21 +25,19 @@ from ..seed.data import Scenario, get_scenario
 from ..seed.offline import OfflineGeminiClient
 from ..tools import InMemoryIdempotencyStore, ToolExecutor, build_registry
 
-# Process-local store used only when no DATABASE_URL is configured.
+# Process-local store + checkpointer used only when no DATABASE_URL is configured.
 _memory_store = InMemoryClaimStore()
-# Hold references to background run tasks so they are not garbage-collected.
+_memory_saver = MemorySaver()
 _running: set[asyncio.Task] = set()
 
 
 def get_store() -> ClaimStore:
-    settings = get_settings()
-    return PostgresClaimStore() if settings.db_configured else _memory_store
+    return PostgresClaimStore() if get_settings().db_configured else _memory_store
 
 
 async def _build_deps(store: ClaimStore, planner: GeminiClient) -> LifecycleDeps:
     cfg, version = await load_routing_config()
-    settings = get_settings()
-    idem = PostgresIdempotencyStore() if settings.db_configured else InMemoryIdempotencyStore()
+    idem = PostgresIdempotencyStore() if get_settings().db_configured else InMemoryIdempotencyStore()
     executor = ToolExecutor(build_registry(), idempotency=idem, recorder=store.record_tool_call)
     return LifecycleDeps(
         store=store, planner=planner, executor=executor,
@@ -44,48 +45,83 @@ async def _build_deps(store: ClaimStore, planner: GeminiClient) -> LifecycleDeps
     )
 
 
+def _planner(scenario: Scenario | None = None) -> GeminiClient:
+    """Real Gemini when a key is configured; otherwise the deterministic offline
+    planner (scenario-bound for a fresh run, generic for a resume)."""
+    return get_client() if get_settings().gemini_configured else OfflineGeminiClient(scenario)
+
+
 def _new_claim_id() -> str:
     return f"CLM-2026-{uuid.uuid4().hex[:5].upper()}"
 
 
-async def _run(agg: ClaimAggregate, store: ClaimStore, planner: GeminiClient) -> None:
+def _track(task: asyncio.Task) -> None:
+    _running.add(task)
+    task.add_done_callback(_running.discard)
+
+
+async def _run_fresh(agg: ClaimAggregate, store: ClaimStore, planner: GeminiClient) -> None:
     deps = await _build_deps(store, planner)
-    settings = get_settings()
-    if settings.db_configured:
+    if get_settings().db_configured:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-        async with AsyncPostgresSaver.from_conn_string(settings.database_url) as saver:
+        async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as saver:
             await saver.setup()
             await run_claim(agg, deps, checkpointer=saver, thread_id=agg.id)
     else:
-        await run_claim(agg, deps, thread_id=agg.id)
+        await run_claim(agg, deps, checkpointer=_memory_saver, thread_id=agg.id)
+
+
+async def _resume(claim_id: str, resume_value: dict[str, Any]) -> None:
+    store = get_store()
+    deps = await _build_deps(store, _planner())
+    if get_settings().db_configured:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+        async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as saver:
+            await saver.setup()
+            await resume_claim(deps, checkpointer=saver, thread_id=claim_id, resume_value=resume_value)
+    else:
+        await resume_claim(deps, checkpointer=_memory_saver, thread_id=claim_id,
+                           resume_value=resume_value)
 
 
 async def inject_scenario(scenario_key: str) -> str:
-    """Create a claim from a synthetic scenario and run the lifecycle in the
-    background (so the dashboard watches it live). Returns the new claim id."""
     scenario = get_scenario(scenario_key)
     if scenario is None:
         raise ValueError(f"unknown scenario '{scenario_key}'")
     store = get_store()
-    planner = _planner_for(scenario)
     agg = ClaimAggregate(
-        id=_new_claim_id(),
-        fnol_text=scenario.fnol_text,
-        document_ids=scenario.document_ids,
-        claimant_id=scenario.claimant_id,
-        policy_number=scenario.policy_number,
+        id=_new_claim_id(), fnol_text=scenario.fnol_text, document_ids=scenario.document_ids,
+        claimant_id=scenario.claimant_id, policy_number=scenario.policy_number,
     )
-    # Persist a RECEIVED row immediately so the queue shows it at once.
-    await store.upsert_claim(agg)
-    task = asyncio.create_task(_run(agg, store, planner))
-    _running.add(task)
-    task.add_done_callback(_running.discard)
+    await store.upsert_claim(agg)  # show RECEIVED in the queue at once
+    _track(asyncio.create_task(_run_fresh(agg, store, _planner(scenario))))
     return agg.id
 
 
-def _planner_for(scenario: Scenario) -> GeminiClient:
-    """Real Gemini when a key is configured; otherwise the deterministic offline
-    planner so the full stack is demoable locally without any API key."""
-    settings = get_settings()
-    return get_client() if settings.gemini_configured else OfflineGeminiClient(scenario)
+async def resolve_approval(approval_id: str, payload: dict[str, Any]) -> str:
+    """Resolve a pending approval and resume the paused claim (HITL)."""
+    store = get_store()
+    appr = await store.get_approval(approval_id)
+    if appr is None:
+        raise KeyError(approval_id)
+    claim_id = appr["claim_id"]
+    resume_value = {
+        "resolution": payload.get("resolution", "approve"),
+        "delta": payload.get("delta"),
+        "reason_code": payload.get("reason_code"),
+        "resolved_by": payload.get("resolved_by"),
+    }
+    _track(asyncio.create_task(_resume(claim_id, resume_value)))
+    return claim_id
+
+
+async def submit_documents(claim_id: str, fields: dict[str, Any]) -> None:
+    """Simulated document upload: resume the W4 info-request loop with the
+    newly provided fields (re-triage)."""
+    _track(asyncio.create_task(_resume(claim_id, {"fields": fields})))
+
+
+async def list_pending_approvals() -> list[dict[str, Any]]:
+    return await get_store().list_pending_approvals()

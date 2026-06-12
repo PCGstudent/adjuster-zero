@@ -51,3 +51,38 @@ async def claim_detail(claim_id: str) -> dict[str, Any]:
         "decisions": await store.get_decisions(claim_id),
         "tool_calls": await store.get_tool_calls(claim_id),
     }
+
+
+# ── Approval inbox (HITL) ─────────────────────────────────────────────────────
+@router.get("/approvals")
+async def list_approvals() -> list[dict[str, Any]]:
+    return await service.list_pending_approvals()
+
+
+class ResolveRequest(BaseModel):
+    resolution: str  # approve | modify | reject
+    delta: dict[str, Any] | None = None  # structured diff on Modify (e.g. {"amount": 3310})
+    reason_code: str | None = None
+    resolved_by: str | None = None
+
+
+@router.post("/approvals/{approval_id}/resolve")
+async def resolve_approval(approval_id: str, req: ResolveRequest) -> dict[str, str]:
+    if req.resolution not in {"approve", "modify", "reject"}:
+        raise HTTPException(status_code=400, detail="resolution must be approve|modify|reject")
+    try:
+        claim_id = await service.resolve_approval(approval_id, req.model_dump())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="approval not found") from exc
+    return {"claim_id": claim_id, "status": "resuming"}
+
+
+class DocumentsRequest(BaseModel):
+    fields: dict[str, Any]  # e.g. {"policy_number": "POL-90013", "loss_date": "2026-06-05"}
+
+
+@router.post("/claims/{claim_id}/documents")
+async def submit_documents(claim_id: str, req: DocumentsRequest) -> dict[str, str]:
+    """Simulated claimant document upload that resumes the W4 info-request loop."""
+    await service.submit_documents(claim_id, req.fields)
+    return {"claim_id": claim_id, "status": "resuming"}
