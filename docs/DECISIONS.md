@@ -332,3 +332,22 @@ Format: ADR-NNN, date, context, decision, consequences.
   (status, coverages carried, exclusions) into the determination so flash confirms
   and cites the governing chunk. Verified live: glass FNOL → W1 → CLOSED, coverage
   conf 1.00, cites G-AUTO-GLASS. The floor still fires for genuinely uncited cases.
+
+### ADR-030 — WOW layer: vision · explainability · simulator · storm
+- **Date:** 2026-06-12
+- **Decision:** Four capability showcases, all live and on-thesis:
+  - **Multimodal intake** — `describe_damage` (Gemini flash-lite vision) turns a
+    photo into an FNOL that flows through the same deterministic pipeline.
+    GeminiClient gained `images` support; `/api/claims/inject_vision`.
+  - **Explainability agent** — `/api/claims/{id}/explain`: an agent reads the
+    claim's OWN audit trail (events, decisions, citations) and explains the
+    outcome in plain language (LLM live, deterministic fallback offline). Safe,
+    read-only. The "can I trust it / why?" answer.
+  - **Policy simulator** — `run_simulation` replays the 50-claim golden set under
+    custom thresholds with no persistence → STP rate + workflow mix + confusion.
+    `/api/admin/simulate` + `/simulate` sliders. Makes "routing is a pure,
+    replayable function" interactive (raise the ceiling, watch STP move).
+  - **Storm mode** — `/api/claims/storm` + `/api/stats`: inject 25 at once and
+    watch the per-model token-bucket admission control queue them (in-flight badge).
+- **Verified live:** vision sees an image; explain grounds in the trace; simulate
+  default W1=12→ceiling-$10k W1=20 (STP 24%→40%); storm shows in-flight=5.
