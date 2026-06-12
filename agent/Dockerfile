@@ -18,7 +18,9 @@ RUN uv sync --no-dev --no-install-project --frozen 2>/dev/null || uv sync --no-d
 COPY src ./src
 RUN uv sync --no-dev --no-install-project
 
-ENV PATH="/app/.venv/bin:$PATH"
+# Use the venv's interpreter and make the (uninstalled) package importable.
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src"
 
 # Cloud Run provides $PORT; default to 8080 locally.
 ENV PORT=8080
