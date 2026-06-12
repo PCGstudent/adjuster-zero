@@ -285,3 +285,21 @@ class GuidelineChunkOut(BaseModel):
 class GuidelineSearchResult(BaseModel):
     chunks: list[GuidelineChunkOut] = Field(default_factory=list)
     low_relevance: bool = False
+
+
+# ── T-11 sanctions_watchlist_check (T0, MANDATORY pre-payment, fail-closed) ──
+class SanctionsCheckArgs(BaseModel):
+    payee_name: str
+    dob: str | None = None
+    country: str = "US"
+
+
+class SanctionsMatch(BaseModel):
+    name: str
+    score: float
+
+
+class SanctionsCheckResult(BaseModel):
+    hit: bool = False
+    matches: list[SanctionsMatch] = Field(default_factory=list)
+    available: bool = True

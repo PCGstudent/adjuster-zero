@@ -17,6 +17,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
+from ..config import get_settings
 from ..domain.states import Workflow
 from ..llm.errors import EscalateToHuman
 from .base import RiskTier, Tool, ToolFailure, ToolResult
@@ -96,6 +97,16 @@ class ToolExecutor:
                 raise ToolNotAllowed(None, tool_name)
         elif not tool_allowed(workflow, tool_name):
             raise ToolNotAllowed(workflow, tool_name)
+
+        # 1b) Fail-closed compliance: when the sanctions service is unavailable,
+        #     ALL payments are blocked globally (thesis 7). Better a stuck claim
+        #     than an unscreened disbursement.
+        if tool_name == "payment_execute" and get_settings().sanctions_unavailable:
+            return ToolResult.failure(
+                "COMPLIANCE_UNAVAILABLE",
+                "sanctions screening unavailable; payments blocked (fail-closed)",
+                retryable=False,
+            )
 
         # 2) Validate args against the schema BEFORE invoking.
         try:

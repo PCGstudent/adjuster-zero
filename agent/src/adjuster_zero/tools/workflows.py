@@ -15,7 +15,7 @@ from ..domain.states import Workflow
 _READ_ONLY = {
     "policy_lookup", "coverage_check", "repair_cost_estimator",
     "claim_history", "duplicate_claim_check", "fraud_signal_scan",
-    "weather_event_verify", "guideline_search",
+    "weather_event_verify", "guideline_search", "sanctions_watchlist_check",
 }
 
 WORKFLOW_ALLOWLISTS: dict[Workflow, frozenset[str]] = {

@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..seed.data import SCENARIOS
-from . import service
+from . import analytics, contact, service
 
 router = APIRouter(prefix="/api", tags=["claims"])
 
@@ -92,3 +92,34 @@ async def submit_documents(claim_id: str, req: DocumentsRequest) -> dict[str, st
     """Simulated claimant document upload that resumes the W4 info-request loop."""
     await service.submit_documents(claim_id, req.fields)
     return {"claim_id": claim_id, "status": "resuming"}
+
+
+# ── Analytics + admin + contact (Phase 4) ────────────────────────────────────
+@router.get("/analytics")
+async def get_analytics() -> dict[str, Any]:
+    return await analytics.compute()
+
+
+@router.post("/admin/evals")
+async def run_evals_admin() -> dict[str, Any]:
+    """Admin 'Run evals' — RPD-guarded replay of the golden set."""
+    from ..evals.run import run_evals
+
+    return await run_evals()
+
+
+class ContactRequest(BaseModel):
+    name: str = ""
+    email: str = ""
+    message: str = ""
+    process: str = ""
+
+
+@router.post("/contact")
+async def contact_agent(req: ContactRequest) -> dict[str, Any]:
+    return await contact.handle_contact(req.model_dump())
+
+
+@router.get("/leads")
+async def list_leads() -> list[dict[str, Any]]:
+    return await service.get_store().list_leads()

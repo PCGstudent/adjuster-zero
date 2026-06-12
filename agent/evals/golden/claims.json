@@ -1,0 +1,752 @@
+[
+  {
+    "key": "GOLD-001",
+    "title": "Golden 001 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 1. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-002",
+    "title": "Golden 002 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 2. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-003",
+    "title": "Golden 003 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 3. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-004",
+    "title": "Golden 004 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 4. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-005",
+    "title": "Golden 005 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 5. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-006",
+    "title": "Golden 006 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 6. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-007",
+    "title": "Golden 007 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 7. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-008",
+    "title": "Golden 008 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 8. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-009",
+    "title": "Golden 009 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 9. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-010",
+    "title": "Golden 010 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 10. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-011",
+    "title": "Golden 011 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 11. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-012",
+    "title": "Golden 012 (W1)",
+    "fnol_text": "Synthetic glass loss for evaluation case 12. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-013",
+    "title": "Golden 013 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 13. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-014",
+    "title": "Golden 014 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 14. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-015",
+    "title": "Golden 015 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 15. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-016",
+    "title": "Golden 016 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 16. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-017",
+    "title": "Golden 017 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 17. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-018",
+    "title": "Golden 018 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 18. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-019",
+    "title": "Golden 019 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 19. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-020",
+    "title": "Golden 020 (W2)",
+    "fnol_text": "Synthetic collision loss for evaluation case 20. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "collision",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-021",
+    "title": "Golden 021 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 21. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-022",
+    "title": "Golden 022 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 22. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-023",
+    "title": "Golden 023 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 23. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-024",
+    "title": "Golden 024 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 24. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-025",
+    "title": "Golden 025 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 25. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-026",
+    "title": "Golden 026 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 26. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-027",
+    "title": "Golden 027 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 27. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-028",
+    "title": "Golden 028 (W2)",
+    "fnol_text": "Synthetic glass loss for evaluation case 28. Policy POL-77120.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "severity": 1
+    }
+  },
+  {
+    "key": "GOLD-029",
+    "title": "Golden 029 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-030",
+    "title": "Golden 030 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-031",
+    "title": "Golden 031 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-032",
+    "title": "Golden 032 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-033",
+    "title": "Golden 033 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-034",
+    "title": "Golden 034 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-035",
+    "title": "Golden 035 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-036",
+    "title": "Golden 036 (W4)",
+    "fnol_text": "I had an incident and want to file a claim. (no policy number provided)",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "peril": "other",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-037",
+    "title": "Golden 037 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 37. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-038",
+    "title": "Golden 038 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 38. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-039",
+    "title": "Golden 039 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 39. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-040",
+    "title": "Golden 040 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 40. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-041",
+    "title": "Golden 041 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 41. Policy POL-90013.",
+    "policy_number": "POL-90013",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-042",
+    "title": "Golden 042 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 42. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-043",
+    "title": "Golden 043 (W5)",
+    "fnol_text": "Synthetic collision loss for evaluation case 43. Policy POL-88341.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W5",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "collision",
+      "severity": 4
+    }
+  },
+  {
+    "key": "GOLD-044",
+    "title": "Golden 044 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-045",
+    "title": "Golden 045 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-046",
+    "title": "Golden 046 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-047",
+    "title": "Golden 047 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-048",
+    "title": "Golden 048 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-049",
+    "title": "Golden 049 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  },
+  {
+    "key": "GOLD-050",
+    "title": "Golden 050 (W3)",
+    "fnol_text": "My parked car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200.",
+    "policy_number": "POL-55200",
+    "claimant_id": "CLMT-004",
+    "document_ids": [],
+    "loss_date": "2026-06-05",
+    "ground_truth": {
+      "expected_route": "W3",
+      "expected_terminal_state": "ESCALATED",
+      "peril": "theft",
+      "severity": 2
+    }
+  }
+]

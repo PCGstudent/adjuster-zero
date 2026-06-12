@@ -37,6 +37,8 @@ from .schemas import (
     RepairLineItem,
     ReserveSetArgs,
     ReserveSetResult,
+    SanctionsCheckArgs,
+    SanctionsCheckResult,
     WeatherEvent,
     WeatherVerifyArgs,
     WeatherVerifyResult,
@@ -254,3 +256,9 @@ async def weather_event_verify(args: WeatherVerifyArgs) -> WeatherVerifyResult:
             event=WeatherEvent(type=args.peril.lower(), magnitude="1.75in", distance_km=3.1),
         )
     return WeatherVerifyResult(verified=False)
+
+
+async def sanctions_watchlist_check(args: SanctionsCheckArgs) -> SanctionsCheckResult:
+    # Mock OFAC-style screen. Synthetic payees never hit. Availability is governed
+    # at the executor layer (fail-closed) via settings.sanctions_unavailable.
+    return SanctionsCheckResult(hit=False, matches=[], available=True)

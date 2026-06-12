@@ -16,6 +16,8 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from ..config import get_settings
 from ..domain.aggregate import ClaimAggregate
+from ..domain.events import EventType, claim_event
+from ..domain.states import ClaimState
 from ..graph.lifecycle import LifecycleDeps, resume_claim, run_claim
 from ..llm import GeminiClient, get_client
 from ..persistence import InMemoryClaimStore, load_routing_config
@@ -89,14 +91,16 @@ def _track(task: asyncio.Task) -> None:
 
 async def _run_fresh(agg: ClaimAggregate, store: ClaimStore, planner: GeminiClient) -> None:
     deps = await _build_deps(store, planner)
+    # RECEIVED was already committed (event-backed) by inject_scenario.
     if get_settings().db_configured:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         async with AsyncPostgresSaver.from_conn_string(get_settings().database_url) as saver:
             await saver.setup()
-            await run_claim(agg, deps, checkpointer=saver, thread_id=agg.id)
+            await run_claim(agg, deps, checkpointer=saver, thread_id=agg.id, emit_received=False)
     else:
-        await run_claim(agg, deps, checkpointer=_memory_saver, thread_id=agg.id)
+        await run_claim(agg, deps, checkpointer=_memory_saver, thread_id=agg.id,
+                        emit_received=False)
 
 
 async def _resume(claim_id: str, resume_value: dict[str, Any]) -> None:
@@ -121,8 +125,15 @@ async def inject_scenario(scenario_key: str) -> str:
     agg = ClaimAggregate(
         id=_new_claim_id(), fnol_text=scenario.fnol_text, document_ids=scenario.document_ids,
         claimant_id=scenario.claimant_id, policy_number=scenario.policy_number,
+        trace_id=f"trc_{uuid.uuid4().hex[:10]}",
     )
-    await store.upsert_claim(agg)  # show RECEIVED in the queue at once
+    # Commit RECEIVED (event-backed) synchronously so the queue shows it at once
+    # AND the timeline's first event exists (thesis 5 — no projection without event).
+    await store.commit_transition(
+        agg.model_copy(update={"state": ClaimState.RECEIVED}),
+        claim_event(agg.id, EventType.RECEIVED, component="api",
+                    data={"injected": scenario_key, "fnol_chars": len(agg.fnol_text)},
+                    trace_id=agg.trace_id))
     _track(asyncio.create_task(_run_fresh(agg, store, _planner(scenario))))
     return agg.id
 

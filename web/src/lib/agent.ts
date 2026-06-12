@@ -25,6 +25,10 @@ export const agent = {
   claim: (id: string) => get<ClaimDetail>(`/api/claims/${id}`),
   inject: (scenario_key: string) => post<{ claim_id: string }>("/api/claims/inject", { scenario_key }),
   events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
+  analytics: () => get<Record<string, unknown>>("/api/analytics"),
+  runEvals: () => post<Record<string, unknown>>("/api/admin/evals", {}),
+  contact: (body: { name: string; email: string; message: string; process: string }) =>
+    post<Record<string, unknown>>("/api/contact", body),
   approvals: () => get<Approval[]>("/api/approvals"),
   resolve: (id: string, body: { resolution: string; delta?: unknown; reason_code?: string }) =>
     post<{ claim_id: string }>(`/api/approvals/${id}/resolve`, { ...body, resolved_by: "operator" }),

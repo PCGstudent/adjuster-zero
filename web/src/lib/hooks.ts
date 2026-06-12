@@ -90,6 +90,18 @@ export function useApprovals(): { approvals: Approval[]; refresh: () => void } {
   return { approvals, refresh };
 }
 
+/** Live analytics KPIs (polled). */
+export function useAnalytics(): Record<string, unknown> | null {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    const refresh = () => agent.analytics().then(setData).catch(() => {});
+    refresh();
+    const poll = setInterval(refresh, 4000);
+    return () => clearInterval(poll);
+  }, []);
+  return data;
+}
+
 /** Global live event stream across all claims — the Agent Console. */
 export function useGlobalEvents(): GlobalEvent[] {
   const [events, setEvents] = useState<GlobalEvent[]>([]);

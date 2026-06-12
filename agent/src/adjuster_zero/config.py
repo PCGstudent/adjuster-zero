@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # Simulate a degraded fraud control (admin toggle / demo): caps routing at W2
     # — no straight-through processing while a fraud control is down (thesis 7).
     fraud_controls_degraded: bool = False
+    # Simulate the sanctions/watchlist service being unavailable. Fail-closed:
+    # ALL payments are blocked while this is true (thesis 7 — the worst bug would
+    # be failing open, so we say so loudly and block).
+    sanctions_unavailable: bool = False
 
     @property
     def db_configured(self) -> bool:

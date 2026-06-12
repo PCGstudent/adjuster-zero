@@ -22,6 +22,7 @@ class InMemoryClaimStore:
         self.tool_calls: list[dict[str, Any]] = []
         self.executions: dict[str, dict[str, Any]] = {}
         self.approvals: dict[str, dict[str, Any]] = {}
+        self.leads: list[dict[str, Any]] = []
         self._seq = 0
 
     async def upsert_claim(self, agg: ClaimAggregate) -> None:
@@ -94,6 +95,21 @@ class InMemoryClaimStore:
 
     async def get_recent_events(self, limit: int = 50) -> list[dict[str, Any]]:
         return list(reversed(self.events[-limit:]))
+
+    async def list_all_approvals(self) -> list[dict[str, Any]]:
+        return list(self.approvals.values())
+
+    async def all_tool_calls(self) -> list[dict[str, Any]]:
+        return list(self.tool_calls)
+
+    async def all_decisions(self) -> list[dict[str, Any]]:
+        return list(self.decisions)
+
+    async def create_lead(self, lead: dict[str, Any]) -> None:
+        self.leads.append({"ts": _now(), **lead})
+
+    async def list_leads(self) -> list[dict[str, Any]]:
+        return list(reversed(self.leads))
 
     async def create_approval(self, appr: ApprovalRecord) -> None:
         self.approvals[appr.id] = {

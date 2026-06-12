@@ -72,4 +72,47 @@ Tests / lint / typecheck: `make test`, `make lint`, `make typecheck`
 - Loop unbounded: max 2 replans and a per-claim token budget, enforced by the
   executor; exhaustion escalates to a human.
 
+## Five workflows
+
+| ID | Workflow | Terminal | Human touch |
+|---|---|---|---|
+| W1 | Straight-through processing | CLOSED (auto-paid) | none — tier-0 policy gate |
+| W2 | Standard adjudication / fast-deny | SETTLED or DENIED | approve / modify / reject |
+| W3 | Fraud investigation (SIU) | ESCALATED | human-led; **no payment edge** |
+| W4 | Information request loop | re-triage on docs / WITHDRAWN | none (claimant-facing) |
+| W5 | High-severity escalation | ESCALATED with packet | human-led, agent prepares |
+
+## AWS ↔ zero-cost mapping (same patterns, two stacks)
+
+| Production profile (AWS) | Zero-cost profile (live) | Pattern preserved |
+|---|---|---|
+| Step Functions + `waitForTaskToken` | LangGraph + PostgresSaver + `interrupt()` | durable state machine, HITL |
+| DynamoDB single-table | Supabase Postgres (relational schema) | decisions/tools/approvals as first-class entities |
+| SQS + DLQ | Postgres queue / safe-fail tool envelope | decoupling, poison isolation |
+| EventBridge bus | `claim_events` + Supabase Realtime | event-sourcing, live cockpit |
+| EventBridge Scheduler | `pg_cron` + GitHub Actions cron | 72h reminders, SLA timers |
+| OpenSearch | pgvector (hybrid FTS + kNN) | RAG with citations |
+| Bedrock | Gemini (`response_schema` = schema validation) | typed outputs, one repair |
+| CloudWatch + X-Ray | LangSmith (env-gated) + our decision log | end-to-end `trace_id` |
+| Cognito | Supabase Auth + RLS (viewer/operator) | auth, roles |
+| S3 | Supabase Storage | FNOL documents |
+
+## KPIs (synthetic book targets)
+
+STP rate 35–45% · cycle time < 5 min (W1 < 2 min) · override rate < 10% ·
+**unauthorized payments = 0, structurally** · schema-violation rate < 3% ·
+cost/claim < $0.10 · eval pass rate > 92%.
+
+## Cost report
+
+Real infrastructure + LLM cost of the last month: **€0.00** (within free tiers).
+A €1 GCP budget alert is configured; the bill is exported here each month.
+
+## Apply / run / deploy
+
+- DB schema: `db/migrations/00{1..4}_*.sql` via the Supabase SQL editor (`db/README.md`).
+- Guideline RAG (prod): `make ingest` after `003_guidelines.sql`.
+- Evals: `make evals` (offline-deterministic) or the Admin **Run evals** button (RPD-guarded).
+- Deploy: `docs/deploy.md` (Cloud Run + Vercel); demo walkthrough: `docs/demo-script.md`.
+
 See `docs/blueprint.md` for the full spec and `docs/DECISIONS.md` for the ADR log.

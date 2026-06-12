@@ -84,8 +84,8 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
 
     # ── triage ───────────────────────────────────────────────────────────────
     async def intake(agg: ClaimAggregate) -> dict[str, Any]:
-        agg2 = agg.model_copy(update={"state": ClaimState.RECEIVED})
-        await _commit(agg2, EventType.RECEIVED, fnol_chars=len(agg.fnol_text))
+        # The RECEIVED transition is committed by run_claim / inject (event-backed)
+        # before the graph runs, so intake is a pass-through that just confirms state.
         return {"state": ClaimState.RECEIVED}
 
     async def extract(agg: ClaimAggregate) -> dict[str, Any]:
@@ -150,6 +150,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         loss_date = agg.extraction.fields.get("loss_date", "")
         peril = agg.classification.peril or "other"
         degraded = get_settings().fraud_controls_degraded
+        spent = 0  # LLM tokens spent in this node (counts toward the claim budget)
 
         if agg.policy_number:
             pol = await deps.executor.execute(
@@ -197,6 +198,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
                 chunks=chunks)
             grounded, guardrails = apply_citation_floor(det, {c["id"] for c in chunks})
             coverage = grounded
+            spent += meta.tokens_in + meta.tokens_out
             await store.record_decision(DecisionRecord(
                 claim_id=agg.id, decision_type="action", model=meta.model,
                 output=det.model_dump(), confidence=grounded.confidence,
@@ -241,14 +243,16 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             "open_questions": [f"duplicate of {m}" for m in dup_refs],
             "duplicate_hard_match": bool(exact),
             "degraded": degraded,
+            "token_budget_used": agg.token_budget_used + spent,
         }
-        await _commit(agg.model_copy(update=updates), EventType.INVESTIGATED,
+        agg2 = agg.model_copy(update=updates)
+        await _commit(agg2, EventType.INVESTIGATED,
                       covered=coverage.covered, amount_est=amount_est, fraud_score=fraud_score,
                       policy_status=policy_status.value, duplicates=dup_refs,
                       citations=coverage.citations, degraded=degraded)
         if degraded:
-            await _commit(agg.model_copy(update=updates), EventType.DEGRADED_MODE,
-                          reason="fraud_control_unavailable")
+            await _commit(agg2, EventType.DEGRADED_MODE, reason="fraud_control_unavailable")
+        _check_budget(agg2)
         return updates
 
     async def route_node(agg: ClaimAggregate) -> dict[str, Any]:
@@ -279,6 +283,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         workflow = decision.workflow
         rule_id = decision.rule_id
         rationale = decision.rationale
+        spent = 0
 
         # R-06 ambiguous band: the ONLY place the LLM influences routing. flash,
         # grounded in fraud guidelines, chooses W2 or W3; logged with alternatives.
@@ -293,6 +298,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             workflow = Workflow(tb.workflow)
             rule_id = "R-06"
             rationale = f"tiebreak -> {tb.workflow}: {tb.rationale}"
+            spent += meta.tokens_in + meta.tokens_out
             await store.record_decision(DecisionRecord(
                 claim_id=agg.id, decision_type="tiebreak", model=meta.model,
                 output=tb.model_dump(), confidence=tb.confidence,
@@ -309,9 +315,12 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         updates = {
             "workflow": workflow, "rule_id": rule_id,
             "config_version": deps.config_version, "state": ClaimState.PLANNING,
+            "token_budget_used": agg.token_budget_used + spent,
         }
-        await _commit(agg.model_copy(update=updates), EventType.ROUTED,
-                      workflow=workflow.value, rule_id=rule_id, rationale=rationale)
+        agg2 = agg.model_copy(update=updates)
+        await _commit(agg2, EventType.ROUTED, workflow=workflow.value, rule_id=rule_id,
+                      rationale=rationale)
+        _check_budget(agg2)
         return updates
 
     # ── W1 straight-through ────────────────────────────────────────────────────
@@ -323,19 +332,28 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         await deps.executor.execute(Workflow.W1, "reserve_set",
             {"claim_id": agg.id, "amount": amount, "rationale": "STP repair estimate",
              "idempotency_key": f"{agg.id}-rsv-1"}, claim_id=agg.id, trace_id=agg.trace_id)
+        # Mandatory pre-payment sanctions screen (fail-closed at the executor).
+        await deps.executor.execute(Workflow.W1, "sanctions_watchlist_check",
+            {"payee_name": agg.claimant_id or "payee"}, claim_id=agg.id, trace_id=agg.trace_id)
         gate = PaymentAuthorization(policy_gate_ref=f"W1-T0-ceiling-{int(ceiling)}")
         pay = await deps.executor.execute(Workflow.W1, "payment_execute",
             {"claim_id": agg.id, "payee_id": agg.claimant_id or "payee", "amount": amount,
              "method": "ACH", "authorization": gate, "idempotency_key": f"{agg.id}-pay-1"},
             claim_id=agg.id, trace_id=agg.trace_id)
+        if not pay.ok:
+            # Compensation (saga): restore the reserve, park for human review.
+            reason = pay.error.code if pay.error else "PAYMENT_FAILED"
+            fin = agg.financials.model_copy(update={"reserve": 0.0, "paid": 0.0})
+            updates = {"financials": fin, "state": ClaimState.REVIEW_PENDING, "reason_code": reason}
+            await _commit(agg.model_copy(update=updates), EventType.COMPENSATED,
+                          reason=reason, restored_reserve=amount)
+            return updates
         await deps.executor.execute(Workflow.W1, "customer_comm_send",
             {"claim_id": agg.id, "template_id": "settlement_paid", "mode": "draft",
              "merge_fields": {"holder": agg.claimant_id or "claimant", "amount": amount, "method": "ACH"}},
             claim_id=agg.id, trace_id=agg.trace_id)
-        paid = amount if pay.ok else 0.0
-        fin = agg.financials.model_copy(update={"reserve": amount, "paid": paid})
-        # The financials are persisted together with the SETTLED event in the
-        # settle node (thesis 5: no projection write without its event).
+        fin = agg.financials.model_copy(update={"reserve": amount, "paid": amount})
+        # Financials persist with the SETTLED event in settle (thesis 5).
         return {"financials": fin, "state": ClaimState.EXECUTING}
 
     async def settle(agg: ClaimAggregate) -> dict[str, Any]:
@@ -424,13 +442,25 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             (delta or {}).get("amount", action.get("amount", 0.0))
             if resolution == "modify" else action.get("amount", 0.0)
         )
+        await deps.executor.execute(Workflow.W2, "sanctions_watchlist_check",
+            {"payee_name": agg.claimant_id or "payee"}, claim_id=agg.id, trace_id=agg.trace_id)
         auth = PaymentAuthorization(approval_ref=appr_id)
         pay = await deps.executor.execute(Workflow.W2, "payment_execute",
             {"claim_id": agg.id, "payee_id": agg.claimant_id or "payee", "amount": amount,
              "method": "ACH", "authorization": auth, "idempotency_key": f"{agg.id}-pay-1"},
             claim_id=agg.id, trace_id=agg.trace_id)
+        if not pay.ok:
+            # Compensation: restore reserve, return to review (payment unresolved).
+            reason = pay.error.code if pay.error else "PAYMENT_FAILED"
+            fin = agg.financials.model_copy(update={"reserve": 0.0, "paid": 0.0})
+            updates = {"state": ClaimState.REVIEW_PENDING, "financials": fin, "reason_code": reason}
+            await _commit(agg.model_copy(update=updates), EventType.APPROVAL_RESOLVED,
+                          resolution=resolution)
+            await _commit(agg.model_copy(update=updates), EventType.COMPENSATED,
+                          reason=reason, restored_reserve=amount)
+            return updates
         fin = agg.financials.model_copy(
-            update={"reserve": max(agg.financials.reserve, amount), "paid": amount if pay.ok else 0.0})
+            update={"reserve": max(agg.financials.reserve, amount), "paid": amount})
         updates = {"state": ClaimState.SETTLEMENT, "financials": fin}
         await _commit(agg.model_copy(update=updates), EventType.APPROVAL_RESOLVED,
                       resolution=resolution, amount=amount)
@@ -501,6 +531,10 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             Workflow.W4: "w4_request", Workflow.W5: "w5_escalate",
         }.get(agg.workflow or Workflow.W2, "w2_propose")
 
+    def after_w1(agg: ClaimAggregate) -> str:
+        # Compensated (payment blocked/failed) → parked for review, not settled.
+        return "settle" if agg.state == ClaimState.EXECUTING else END
+
     def after_w2(agg: ClaimAggregate) -> str:
         return "close" if agg.state == ClaimState.SETTLEMENT else END
 
@@ -526,7 +560,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         "w1_execute": "w1_execute", "w2_propose": "w2_propose", "w3_fraud": "w3_fraud",
         "w4_request": "w4_request", "w5_escalate": "w5_escalate",
     })
-    g.add_edge("w1_execute", "settle")
+    g.add_conditional_edges("w1_execute", after_w1, {"settle": "settle", END: END})
     g.add_edge("settle", "close")
     g.add_edge("close", END)
     g.add_edge("w2_propose", "w2_await")
@@ -544,12 +578,19 @@ async def run_claim(
     *,
     checkpointer: Any | None = None,
     thread_id: str | None = None,
+    emit_received: bool = True,
 ) -> ClaimAggregate:
     """Compile + run the lifecycle for one claim. Returns the aggregate at the
     first interrupt (REVIEW_PENDING / INFO_PENDING) or at a terminal state.
-    Catches EscalateToHuman → ESCALATED."""
+    Catches EscalateToHuman → ESCALATED. Commits the RECEIVED transition
+    (event-backed) up front unless the caller already did (emit_received=False)."""
     if agg.trace_id is None:
         agg = agg.model_copy(update={"trace_id": f"trc_{uuid.uuid4().hex[:10]}"})
+    if emit_received:
+        await deps.store.commit_transition(
+            agg.model_copy(update={"state": ClaimState.RECEIVED}),
+            claim_event(agg.id, EventType.RECEIVED, component="executor",
+                        data={"fnol_chars": len(agg.fnol_text)}, trace_id=agg.trace_id))
     app: Any = build_lifecycle_graph(deps).compile(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": thread_id or agg.id}}
     try:

@@ -244,3 +244,62 @@ Format: ADR-NNN, date, context, decision, consequences.
 - **Outcome:** **PASS WITH WARNINGS**, no blockers. Added the thesis-8 e2e test
   (uncited determination → W5). Deferred to Phase 4: sanctions fail-closed
   pre-payment gate (T-11); a runtime (not toggle-only) degraded path.
+
+---
+
+## Phase 4 — Trust layer + showroom
+
+### ADR-022 — Sanctions fail-closed + payment compensation (saga)
+- **Date:** 2026-06-12
+- **Decision:** `sanctions_watchlist_check` is a mandatory pre-payment screen
+  (called in W1/W2 before `payment_execute`). When the sanctions service is
+  unavailable (`sanctions_unavailable`), the executor blocks ALL `payment_execute`
+  calls globally (fail-closed) — better a stuck claim than an unscreened payout.
+  A blocked/failed payment triggers compensation: the reserve is restored and the
+  claim returns to REVIEW_PENDING (a conditional `after_w1` edge routes the
+  compensated branch away from settle). Tested in `test_hardening.py`.
+
+### ADR-023 — Eval harness as a gate
+- **Date:** 2026-06-12
+- **Decision:** 50 labeled golden claims (`evals/golden/claims.json`) span all
+  five routes. `run_evals` replays them through the REAL graph (offline-
+  deterministic by default; real flash-lite when keyed, behind an RPD-budget
+  guard), produces a route confusion matrix + pass rate, writes a report to
+  `evals/reports/`, and records an `eval_runs` row. Wired to `make evals`, the
+  weekly Action, and the Admin "Run evals" button. Current offline accuracy:
+  route 100%, terminal 100% over 50 claims (gate is ≥92%).
+
+### ADR-024 — Analytics from the event-sourced store
+- **Date:** 2026-06-12
+- **Decision:** KPIs (STP rate, override rate, cost/claim, schema-violation rate),
+  the funnel, the confidence-calibration buckets (predicted vs. human agreement,
+  fed by approval resolutions), the RPD meter, and the per-tool failure table are
+  all derived from claims/approvals/tool_calls/decisions/llm_usage — no separate
+  metrics pipeline (the event log IS the substrate).
+
+### ADR-025 — Contact form is itself an agent
+- **Date:** 2026-06-12
+- **Decision:** The "Talk to me" form runs a minimal deterministic intake
+  (qualify → one clarifying question if vague → create lead → draft an email to
+  the owner) and surfaces its decisions + draft, with a `leads` table. Same
+  thesis at small scale: the model proposes the draft; we dispose (store + would-
+  email). No real email is sent (cut list).
+
+### ADR-026 — Showroom layer
+- **Date:** 2026-06-12
+- **Decision:** Public landing (`/`) with the pitch, the three demo scenarios,
+  "same engine, your process" translation cards, an honest tech summary, and a
+  live nine-capabilities panel (event-type→capability map in one config file).
+  Guided tour injects the three journeys sequentially with concept-naming
+  narration. Viewer mode is public read-only via Supabase RLS (anon key);
+  operator actions require auth.
+
+### ADR-027 — Phase 4 guardian outcome (full-repo)
+- **Date:** 2026-06-12
+- **Outcome:** Full-repository audit, verdict **PASS WITH WARNINGS**, no blockers;
+  all load-bearing theses (1/4/7) hold repo-wide (no unauthorized-payment path;
+  no secrets committed; all data synthetic). Fixes applied: the R-06 tiebreak and
+  the grounded coverage determination now accrue tokens to the per-claim budget
+  and call `_check_budget` (thesis 6 completeness); `inject_scenario` and
+  `run_claim` now commit the RECEIVED transition event-backed (no momentary
+  projection-without-event; thesis 5).

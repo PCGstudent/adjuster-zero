@@ -23,8 +23,14 @@ jobs:
           enable-cache: true
       - name: Sync
         run: uv sync --extra dev
-      - name: Run evals (placeholder until Phase 4)
+      - name: Run evals (golden set → report + eval_runs row)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: echo "Eval harness lands in Phase 4 (see /evals)."
+        run: uv run python -m adjuster_zero.evals.run
+      - name: Upload eval report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: evals/reports/*.json
+          if-no-files-found: ignore

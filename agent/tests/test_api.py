@@ -70,3 +70,30 @@ def test_journey_b_lapsed_review_then_approve_denies() -> None:
         res = client.post(f"/api/approvals/{appr['id']}/resolve", json={"resolution": "approve"})
         assert res.status_code == 200
         assert _wait_state(client, claim_id, {"DENIED"}) == "DENIED"
+
+
+def test_contact_agent_qualifies_and_drafts() -> None:
+    with TestClient(app) as client:
+        res = client.post("/api/contact", json={
+            "name": "Dana", "email": "dana@example.com",
+            "message": "We process thousands of invoices a month and want to automate matching.",
+            "process": "invoices"})
+        body = res.json()
+        assert body["qualified"] is True
+        assert "drafted by the contact agent" in body["email_draft"]
+        leads = client.get("/api/leads").json()
+        assert any(le["email"] == "dana@example.com" for le in leads)
+
+
+def test_analytics_endpoint() -> None:
+    with TestClient(app) as client:
+        client.post("/api/claims/inject", json={"scenario_key": "clean_glass"})
+        a = client.get("/api/analytics").json()
+        assert "kpis" in a and "funnel" in a and "tool_failures" in a
+
+
+def test_admin_run_evals_offline() -> None:
+    with TestClient(app) as client:
+        report = client.post("/api/admin/evals").json()
+        assert report["total"] == 50
+        assert report["route_accuracy"] >= 0.92

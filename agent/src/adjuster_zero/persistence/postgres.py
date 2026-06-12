@@ -233,6 +233,33 @@ class PostgresClaimStore:
             (limit,),
         )
 
+    async def list_all_approvals(self) -> list[dict[str, Any]]:
+        return await self._query("SELECT * FROM approvals ORDER BY created_at DESC LIMIT 500")
+
+    async def all_tool_calls(self) -> list[dict[str, Any]]:
+        return await self._query(
+            "SELECT tool, status, error_code FROM tool_calls ORDER BY ts DESC LIMIT 2000")
+
+    async def all_decisions(self) -> list[dict[str, Any]]:
+        return await self._query(
+            "SELECT decision_type, guardrails FROM agent_decisions ORDER BY ts DESC LIMIT 2000")
+
+    async def create_lead(self, lead: dict[str, Any]) -> None:
+        pool = db.get_pool()
+        if pool is None:
+            return
+        async with pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "INSERT INTO leads (name, email, message, process, qualified, "
+                "clarifying_question, email_draft, trace_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (lead.get("name"), lead.get("email"), lead.get("message"), lead.get("process"),
+                 lead.get("qualified"), lead.get("clarifying_question"),
+                 lead.get("email_draft"), lead.get("trace_id")),
+            )
+
+    async def list_leads(self) -> list[dict[str, Any]]:
+        return await self._query("SELECT * FROM leads ORDER BY ts DESC LIMIT 200")
+
     async def create_approval(self, appr: ApprovalRecord) -> None:
         pool = db.get_pool()
         if pool is None:
