@@ -303,3 +303,18 @@ Format: ADR-NNN, date, context, decision, consequences.
   and call `_check_budget` (thesis 6 completeness); `inject_scenario` and
   `run_claim` now commit the RECEIVED transition event-backed (no momentary
   projection-without-event; thesis 5).
+
+### ADR-028 — Live bring-up (real Supabase + Gemini)
+- **Date:** 2026-06-12
+- **Outcome:** Applied migrations 001–004 (via `adjuster_zero.scripts.apply_migrations`,
+  using the service-role DATABASE_URL), ingested the guideline corpus to pgvector
+  (`make ingest`, 36 chunks), and validated all three journeys end-to-end against
+  the real backend: A (clean_glass → W1 → CLOSED, RAG-cited), B (lapsed →
+  REVIEW_PENDING → approve → DENIED, gated letter sent), C (fraud_suspect → W3,
+  payments=0). Observability confirmed: model tiering in `llm_usage` (flash vs
+  flash-lite vs embeddings), analytics KPIs, event stream.
+- **Fixes surfaced only against Postgres** (the in-memory tests couldn't catch):
+  approval id must be a UUID (now UUID5); `resolved_by` is a UUID FK (left NULL);
+  embeddings pinned to 768 dims; Windows needs an explicit SelectorEventLoop for
+  uvicorn. The remaining work — Cloud Run / Vercel / GitHub deploy — needs the
+  human's cloud logins (`docs/deploy.md`).
