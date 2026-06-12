@@ -150,3 +150,65 @@ async def contact_agent(req: ContactRequest) -> dict[str, Any]:
 @router.get("/leads")
 async def list_leads() -> list[dict[str, Any]]:
     return await service.get_store().list_leads()
+
+
+# ── WOW features: explain · vision · simulate · storm · stats ─────────────────
+@router.get("/claims/{claim_id}/explain")
+async def explain_claim(claim_id: str) -> dict[str, Any]:
+    result = await service.explain(claim_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="claim not found")
+    return result
+
+
+class VisionRequest(BaseModel):
+    image_base64: str
+    mime: str = "image/jpeg"
+    policy_number: str | None = None
+    claimant_id: str | None = None
+    note: str = ""
+
+
+@router.post("/claims/inject_vision")
+async def inject_vision(req: VisionRequest) -> dict[str, Any]:
+    import base64
+
+    try:
+        raw = base64.b64decode(req.image_base64.split(",")[-1])  # tolerate data: URLs
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail="invalid image_base64") from exc
+    if len(raw) > 6_000_000:
+        raise HTTPException(status_code=400, detail="image too large (max ~6MB)")
+    try:
+        return await service.inject_vision(raw, req.mime, req.policy_number, req.claimant_id, req.note)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+class SimulateRequest(BaseModel):
+    config: dict[str, float] = {}
+
+
+@router.post("/admin/simulate")
+async def simulate(req: SimulateRequest) -> dict[str, Any]:
+    from ..evals.run import run_simulation
+    from ..router import RoutingConfig
+
+    fields = RoutingConfig.model_fields
+    cfg = RoutingConfig(**{k: v for k, v in req.config.items() if k in fields})
+    return await run_simulation(cfg)
+
+
+class StormRequest(BaseModel):
+    n: int = 25
+
+
+@router.post("/claims/storm")
+async def storm(req: StormRequest) -> dict[str, Any]:
+    ids = await service.storm(req.n)
+    return {"injected": len(ids), "claim_ids": ids}
+
+
+@router.get("/stats")
+async def stats() -> dict[str, Any]:
+    return await service.stats()

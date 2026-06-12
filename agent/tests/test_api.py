@@ -97,3 +97,35 @@ def test_admin_run_evals_offline() -> None:
         report = client.post("/api/admin/evals").json()
         assert report["total"] == 50
         assert report["route_accuracy"] >= 0.92
+
+
+def test_simulate_ceiling_changes_stp() -> None:
+    with TestClient(app) as client:
+        base = client.post("/api/admin/simulate", json={"config": {}}).json()
+        high = client.post("/api/admin/simulate", json={"config": {"auto_pay_ceiling": 10000}}).json()
+        # raising the ceiling pulls the collision (W2) cases into W1 straight-through
+        assert high["by_workflow"].get("W1", 0) > base["by_workflow"].get("W1", 0)
+        assert "confusion" in high and "stp_rate" in high
+
+
+def test_storm_and_stats() -> None:
+    with TestClient(app) as client:
+        r = client.post("/api/claims/storm", json={"n": 4}).json()
+        assert r["injected"] == 4 and len(r["claim_ids"]) == 4
+        s = client.get("/api/stats").json()
+        assert "by_state" in s and "in_flight" in s
+
+
+def test_explain_offline_fallback() -> None:
+    with TestClient(app) as client:
+        claim_id = client.post("/api/claims/inject", json={"scenario_key": "clean_glass"}).json()["claim_id"]
+        assert _wait_state(client, claim_id, {"CLOSED", "ESCALATED", "REVIEW_PENDING"}) == "CLOSED"
+        ex = client.get(f"/api/claims/{claim_id}/explain").json()
+        assert ex["summary"] and "W1" in ex["summary"]
+
+
+def test_inject_vision_requires_key() -> None:
+    with TestClient(app) as client:
+        # no GEMINI key in tests → vision is unavailable → 400
+        res = client.post("/api/claims/inject_vision", json={"image_base64": "AAAA", "mime": "image/png"})
+        assert res.status_code == 400

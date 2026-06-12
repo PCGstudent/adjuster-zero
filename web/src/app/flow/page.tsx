@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Play, Camera } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,8 +47,36 @@ export default function Flow() {
   const [claimant, setClaimant] = useState(PRESETS[0].claimant ?? "");
   const [claimId, setClaimId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [visionBusy, setVisionBusy] = useState(false);
+  const [visionDesc, setVisionDesc] = useState<string | null>(null);
 
   const detail = useClaimDetail(claimId ?? "");
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVisionBusy(true);
+    setVisionDesc(null);
+    setClaimId(null);
+    try {
+      const dataUrl: string = await new Promise((res) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.readAsDataURL(file);
+      });
+      const r = await agent.injectVision({
+        image_base64: dataUrl, mime: file.type || "image/jpeg",
+        policy_number: policy || undefined, claimant_id: claimant || undefined,
+      });
+      setVisionDesc(`👁️ The agent saw: “${r.description}” (peril: ${r.peril})`);
+      setClaimId(r.claim_id);
+    } catch {
+      setVisionDesc("Vision intake failed (needs the live agent with a Gemini key).");
+    } finally {
+      setVisionBusy(false);
+      e.target.value = "";
+    }
+  }
 
   function applyPreset(p: Preset) {
     setFnol(p.fnol);
@@ -107,6 +135,16 @@ export default function Flow() {
             <Button onClick={go} disabled={busy || !fnol.trim()} className="w-full">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Go
             </Button>
+
+            <div className="rounded border border-dashed border-border p-3">
+              <label className="flex cursor-pointer items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                {visionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                or drop a photo of the damage — the agent will <em className="mx-1">see</em> it
+                <input type="file" accept="image/*" className="hidden" onChange={onPhoto} disabled={visionBusy} />
+              </label>
+              {visionDesc && <p className="mt-2 text-xs text-primary">{visionDesc}</p>}
+            </div>
+
             <p className="text-xs text-muted-foreground">
               Tip: a valid policy (POL-88341 / POL-77120 / POL-55200 / POL-90013) lets coverage
               resolve; omit it and watch it route to the information-request loop.

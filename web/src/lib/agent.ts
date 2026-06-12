@@ -27,6 +27,13 @@ export const agent = {
   injectCustom: (body: { fnol_text: string; policy_number?: string; claimant_id?: string }) =>
     post<{ claim_id: string }>("/api/claims/inject_custom", body),
   events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
+  explain: (id: string) => get<{ summary: string; steps: { label: string; detail: string }[]; citations: string[] }>(`/api/claims/${id}/explain`),
+  injectVision: (body: { image_base64: string; mime: string; policy_number?: string; claimant_id?: string; note?: string }) =>
+    post<{ claim_id: string; description: string; peril: string; visible_damage: string[]; severity_hint: number }>("/api/claims/inject_vision", body),
+  simulate: (config: Record<string, number>) =>
+    post<{ total: number; route_accuracy: number; stp_rate: number; by_workflow: Record<string, number>; confusion: Record<string, Record<string, number>> }>("/api/admin/simulate", { config }),
+  storm: (n: number) => post<{ injected: number; claim_ids: string[] }>("/api/claims/storm", { n }),
+  stats: () => get<{ in_flight: number; by_state: Record<string, number> }>("/api/stats"),
   analytics: () => get<Record<string, unknown>>("/api/analytics"),
   runEvals: () => post<Record<string, unknown>>("/api/admin/evals", {}),
   contact: (body: { name: string; email: string; message: string; process: string }) =>

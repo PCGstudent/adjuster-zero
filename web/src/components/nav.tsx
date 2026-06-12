@@ -7,6 +7,7 @@ const LINKS = [
   ["/inbox", "Approval inbox"],
   ["/console", "Agent console"],
   ["/analytics", "Analytics"],
+  ["/simulate", "Simulator"],
   ["/contact", "Talk to me"],
 ];
 

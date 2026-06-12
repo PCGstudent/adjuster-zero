@@ -23,9 +23,10 @@ from ..llm import GeminiClient, get_client
 from ..persistence import InMemoryClaimStore, load_routing_config
 from ..persistence.postgres import PostgresClaimStore, PostgresIdempotencyStore
 from ..persistence.store import ClaimStore
+from ..planner import describe_damage, explain_claim
 from ..rag.embed import get_embedder
 from ..rag.index import build_index
-from ..seed.data import CLAIM_HISTORY, Scenario, get_scenario
+from ..seed.data import CLAIM_HISTORY, SCENARIOS, Scenario, get_scenario
 from ..seed.offline import OfflineGeminiClient
 from ..tools import InMemoryIdempotencyStore, RagContext, ToolExecutor, build_registry
 
@@ -158,6 +159,86 @@ async def inject_custom(
                     data={"custom": True, "fnol_chars": len(fnol_text)}, trace_id=agg.trace_id))
     _track(asyncio.create_task(_run_fresh(agg, store, planner)))
     return agg.id
+
+
+async def inject_vision(
+    image_bytes: bytes, mime: str, policy_number: str | None = None,
+    claimant_id: str | None = None, note: str = "",
+) -> dict[str, Any]:
+    """Multimodal intake: Gemini looks at the photo, turns it into an FNOL, and the
+    claim flows through the normal pipeline. Requires a real Gemini key (vision)."""
+    if not get_settings().gemini_configured:
+        raise RuntimeError("vision intake requires GEMINI_API_KEY")
+    vf, _meta = await describe_damage(get_client(), image_bytes, mime)
+    fnol = vf.description
+    if note:
+        fnol += f" {note}"
+    if policy_number:
+        fnol += f" Policy {policy_number}."
+    store = get_store()
+    agg = ClaimAggregate(
+        id=_new_claim_id(), fnol_text=fnol, claimant_id=claimant_id or "CLMT-DEMO",
+        policy_number=policy_number, trace_id=f"trc_{uuid.uuid4().hex[:10]}")
+    await store.commit_transition(
+        agg.model_copy(update={"state": ClaimState.RECEIVED}),
+        claim_event(agg.id, EventType.RECEIVED, component="api",
+                    data={"vision": True, "peril_seen": vf.peril}, trace_id=agg.trace_id))
+    _track(asyncio.create_task(_run_fresh(agg, store, get_client())))
+    return {"claim_id": agg.id, "description": vf.description, "peril": vf.peril,
+            "visible_damage": vf.visible_damage, "severity_hint": vf.severity_hint}
+
+
+def _explain_context(detail: dict[str, Any]) -> str:
+    c = detail["claim"]
+    lines = [f"Claim {c['id']}: final state={c['state']}, workflow={c.get('workflow')}, "
+             f"peril={c.get('peril')}, severity={c.get('severity')}, fraud={c.get('fraud_score')}, "
+             f"amount={c.get('amount_est')}, paid={c.get('paid')}."]
+    for e in detail.get("events", []):
+        lines.append(f"event {e['type']}: {e.get('data')}")
+    for d in detail.get("decisions", []):
+        lines.append(f"decision {d.get('decision_type')} rule={d.get('rule_id')} "
+                     f"conf={d.get('confidence')} citations={d.get('citations')}")
+    return "\n".join(lines)[:6000]
+
+
+async def explain(claim_id: str) -> dict[str, Any] | None:
+    store = get_store()
+    claim = await store.get_claim(claim_id)
+    if claim is None:
+        return None
+    detail: dict[str, Any] = {"claim": claim, "events": await store.get_events(claim_id),
+                              "decisions": await store.get_decisions(claim_id)}
+    if get_settings().gemini_configured:
+        expl, _meta = await explain_claim(get_client(), context=_explain_context(detail))
+        return expl.model_dump()
+    # deterministic fallback (no key): summarize the trace without an LLM.
+    routed = next((e for e in detail["events"] if e["type"] == "claim.routed"), None)
+    cites: list[Any] = next((d.get("citations") for d in detail["decisions"]
+                             if d.get("citations")), []) or []
+    rule = (routed or {}).get("data", {}).get("rule_id")
+    rationale = (routed or {}).get("data", {}).get("rationale", "")
+    return {
+        "summary": f"Claim {claim['id']} ended in {claim['state']} on workflow "
+                   f"{claim.get('workflow')}. Rule {rule} fired: {rationale}.",
+        "steps": [{"label": e["type"], "detail": str(e.get("data"))} for e in detail["events"]],
+        "citations": cites,
+    }
+
+
+async def storm(n: int) -> list[str]:
+    """Inject N mixed synthetic claims at once — watch admission control queue them."""
+    keys = [s.key for s in SCENARIOS]
+    ids: list[str] = []
+    for i in range(min(n, 60)):
+        ids.append(await inject_scenario(keys[i % len(keys)]))
+    return ids
+
+
+async def stats() -> dict[str, Any]:
+    by_state: dict[str, int] = {}
+    for c in await get_store().list_claims():
+        by_state[c["state"]] = by_state.get(c["state"], 0) + 1
+    return {"in_flight": len(_running), "by_state": by_state}
 
 
 async def resolve_approval(approval_id: str, payload: dict[str, Any]) -> str:

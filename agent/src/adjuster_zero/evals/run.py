@@ -117,6 +117,45 @@ async def run_evals(*, max_cases: int | None = None) -> dict[str, Any]:
     return report
 
 
+async def run_simulation(cfg: RoutingConfig, *, max_cases: int | None = None) -> dict[str, Any]:
+    """Replay the golden set under custom routing thresholds WITHOUT persisting —
+    the 'what if Dana raises the ceiling?' simulator. Deterministic (offline), fast."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    cases = golden_claims()
+    if max_cases:
+        cases = cases[:max_cases]
+    embedder = get_embedder()
+    rag = RagContext(index=await InMemoryGuidelineIndex.build(embedder), embedder=embedder,
+                     narratives=_narratives())
+    confusion: dict[str, dict[str, int]] = {}
+    by_workflow: dict[str, int] = {}
+    route_hits = w1_closed = 0
+    for case in cases:
+        store = InMemoryClaimStore()
+        executor = ToolExecutor(build_registry(rag), recorder=store.record_tool_call)
+        deps = LifecycleDeps(store=store, planner=OfflineGeminiClient(case), executor=executor,
+                             routing_config=cfg, config_version=0, ground_coverage=False)
+        agg = ClaimAggregate(id=case.key, fnol_text=case.fnol_text,
+                             claimant_id=case.claimant_id, policy_number=case.policy_number)
+        final = await run_claim(agg, deps, checkpointer=MemorySaver(), thread_id=case.key)
+        exp_r = case.ground_truth["expected_route"]
+        act_r = final.workflow.value if final.workflow else "?"
+        confusion.setdefault(exp_r, {}).setdefault(act_r, 0)
+        confusion[exp_r][act_r] += 1
+        by_workflow[act_r] = by_workflow.get(act_r, 0) + 1
+        route_hits += act_r == exp_r
+        if act_r == "W1" and final.state.value == "CLOSED":
+            w1_closed += 1
+    total = len(cases)
+    return {
+        "total": total, "config": cfg.model_dump(),
+        "route_accuracy": round(route_hits / total, 4) if total else 0,
+        "stp_rate": round(w1_closed / total, 4) if total else 0,
+        "by_workflow": by_workflow, "confusion": confusion,
+    }
+
+
 async def _persist_run(report: dict[str, Any]) -> None:
     pool = db.get_pool()
     if pool is None:

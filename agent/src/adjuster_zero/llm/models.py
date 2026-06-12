@@ -29,10 +29,12 @@ class TaskKind(StrEnum):
     CLASSIFY = "classify"
     FRAUD = "fraud"
     NARRATIVE = "narrative"
+    VISION = "vision"
     PLAN = "plan"
     TIEBREAK = "tiebreak"
     LETTER = "letter"
     COVERAGE = "coverage"
+    EXPLAIN = "explain"
     DEBUG = "debug"
 
 
@@ -42,11 +44,13 @@ _TASK_MODEL: dict[TaskKind, ModelName] = {
     TaskKind.CLASSIFY: ModelName.FLASH_LITE,
     TaskKind.FRAUD: ModelName.FLASH_LITE,
     TaskKind.NARRATIVE: ModelName.FLASH_LITE,
+    TaskKind.VISION: ModelName.FLASH_LITE,  # multimodal extraction
     TaskKind.DEBUG: ModelName.FLASH_LITE,
     TaskKind.PLAN: ModelName.FLASH,
     TaskKind.TIEBREAK: ModelName.FLASH,
     TaskKind.LETTER: ModelName.FLASH,
     TaskKind.COVERAGE: ModelName.FLASH,  # money-adjacent determination → flash
+    TaskKind.EXPLAIN: ModelName.FLASH,  # quality matters for the explanation
 }
 
 

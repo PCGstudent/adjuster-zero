@@ -145,6 +145,16 @@ class GeminiClient:
         # kept so the function provably returns str on all paths.
         raise EscalateToHuman("LLM_RATE_LIMITED", "Exhausted 429 backoff attempts")
 
+    def _contents(self, text_prompt: str, images: list[tuple[bytes, str]] | None) -> Any:
+        """Build generate_content contents — a plain string, or a multimodal list
+        of (image parts + text) when images are supplied (Gemini is multimodal)."""
+        if not images:
+            return text_prompt
+        from google.genai import types
+
+        parts = [types.Part.from_bytes(data=b, mime_type=m) for (b, m) in images]
+        return [*parts, text_prompt]
+
     async def generate_structured(
         self,
         task: TaskKind,
@@ -153,15 +163,17 @@ class GeminiClient:
         *,
         system: str | None = None,
         temperature: float = 0.0,
+        images: list[tuple[bytes, str]] | None = None,
         event_sink: EventSink | None = None,
     ) -> tuple[T, LLMCallMeta]:
         """Generate JSON validated against ``schema``. Exactly one repair retry,
-        then SchemaRepairFailed (an EscalateToHuman subclass)."""
+        then SchemaRepairFailed (an EscalateToHuman subclass). Pass ``images`` as
+        (bytes, mime) pairs for multimodal extraction."""
         model = model_for_task(task)
         meta = LLMCallMeta(model=model.value)
         started = time.perf_counter()
 
-        contents: Any = prompt
+        contents: Any = self._contents(prompt, images)
         last_errors = ""
         last_raw = ""
         # iteration 0 = original, iteration 1 = the single repair attempt
@@ -179,12 +191,13 @@ class GeminiClient:
                     await self._emit(
                         event_sink, "llm.schema_repair", {"task": task.value}
                     )
-                    contents = (
+                    repair = (
                         f"{prompt}\n\nYour previous response was invalid JSON for the "
                         f"required schema. Validator errors:\n{last_errors}\n\n"
                         f"Previous response:\n{text}\n\n"
                         "Return ONLY corrected JSON that satisfies the schema."
                     )
+                    contents = self._contents(repair, images)
         raise SchemaRepairFailed(last_errors, raw=last_raw)
 
     async def embed(

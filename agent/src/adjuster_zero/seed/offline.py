@@ -81,6 +81,7 @@ class OfflineGeminiClient(GeminiClient):
         *,
         system: str | None = None,
         temperature: float = 0.0,
+        images: list[tuple[bytes, str]] | None = None,
         event_sink: EventSink | None = None,
     ) -> tuple[Any, LLMCallMeta]:
         meta = LLMCallMeta(model="offline", tokens_in=150, tokens_out=60, latency_ms=5)

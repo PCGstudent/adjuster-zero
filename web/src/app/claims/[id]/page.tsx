@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ChevronRight, Wrench, GitBranch, Brain, CircleDot } from "lucide-react";
+import { ArrowLeft, ChevronRight, Wrench, GitBranch, Brain, CircleDot, Sparkles, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,9 +128,22 @@ function buildItems(events: ClaimEvent[], tools: ToolCall[], decisions: AgentDec
   return items.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
 }
 
+type Expl = { summary: string; steps: { label: string; detail: string }[]; citations: string[] };
+
 export default function ClaimPage() {
   const params = useParams<{ id: string }>();
   const detail = useClaimDetail(params.id);
+  const [expl, setExpl] = useState<Expl | null>(null);
+  const [explBusy, setExplBusy] = useState(false);
+
+  async function explain() {
+    setExplBusy(true);
+    try {
+      setExpl(await agent.explain(params.id));
+    } finally {
+      setExplBusy(false);
+    }
+  }
 
   if (!detail) {
     return (
@@ -170,7 +183,39 @@ export default function ClaimPage() {
             Simulate document upload
           </Button>
         )}
+        <Button size="sm" onClick={explain} disabled={explBusy}>
+          {explBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Explain why
+        </Button>
       </header>
+
+      {expl && (
+        <Card className="mb-6 border-primary/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="h-4 w-4 text-violet-400" /> Why this happened — explained by the agent
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>{expl.summary}</p>
+            <ol className="space-y-1">
+              {expl.steps.map((s, i) => (
+                <li key={i} className="border-b border-border/30 py-1 last:border-0">
+                  <span className="font-medium">{s.label}</span> — <span className="text-muted-foreground">{s.detail}</span>
+                </li>
+              ))}
+            </ol>
+            {expl.citations.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {expl.citations.map((c) => (
+                  <span key={c} className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs text-emerald-300">📎 {c}</span>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Grounded only in this claim&apos;s own audit trail.</p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_200px]">
         <div className="space-y-6">

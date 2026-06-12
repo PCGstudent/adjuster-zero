@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Play, Sparkles } from "lucide-react";
+import { Loader2, Play, Sparkles, CloudLightning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,10 +27,24 @@ export default function Queue() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [tour, setTour] = useState<string | null>(null);
+  const [inFlight, setInFlight] = useState(0);
+  const [storming, setStorming] = useState(false);
 
   useEffect(() => {
     agent.scenarios().then(setScenarios).catch(() => {});
+    const poll = setInterval(() => agent.stats().then((s) => setInFlight(s.in_flight)).catch(() => {}), 2000);
+    return () => clearInterval(poll);
   }, []);
+
+  async function storm() {
+    setStorming(true);
+    try {
+      await agent.storm(25);
+      setTimeout(refresh, 400);
+    } finally {
+      setTimeout(() => setStorming(false), 1500);
+    }
+  }
 
   async function inject(key: string) {
     setBusy(key);
@@ -60,10 +74,21 @@ export default function Queue() {
         <p className="text-sm text-muted-foreground">
           Watch the agent decide, live. Inject a claim or run the guided demo.
         </p>
-        <Button onClick={runTour} disabled={!!tour}>
-          {tour ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Watch the guided demo
-        </Button>
+        <div className="flex items-center gap-3">
+          {inFlight > 0 && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
+              {inFlight} in flight (admission control)
+            </span>
+          )}
+          <Button variant="outline" onClick={storm} disabled={storming}>
+            {storming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudLightning className="h-4 w-4" />}
+            Storm (25)
+          </Button>
+          <Button onClick={runTour} disabled={!!tour}>
+            {tour ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Watch the guided demo
+          </Button>
+        </div>
       </header>
 
       {tour && (
