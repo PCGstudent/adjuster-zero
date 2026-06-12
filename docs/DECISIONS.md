@@ -318,3 +318,17 @@ Format: ADR-NNN, date, context, decision, consequences.
   embeddings pinned to 768 dims; Windows needs an explicit SelectorEventLoop for
   uvicorn. The remaining work — Cloud Run / Vercel / GitHub deploy — needs the
   human's cloud logins (`docs/deploy.md`).
+
+### ADR-029 — Live flow page + coverage-grounding fix
+- **Date:** 2026-06-12
+- **Decision:** Added `/flow` — an editable FNOL + Go that animates the claim
+  across the lifecycle diagram (pipeline → router → W1..W5 → terminal), nodes/
+  edges lighting up from claim_events, backed by `POST /api/claims/inject_custom`
+  (arbitrary text through the real graph). It makes the central thesis visible.
+- **Bug found while building it (real, not flakiness):** the grounded
+  `determine_coverage` saw only guideline chunks + the question, NOT the policy's
+  carried coverages — so for a clean glass claim it hedged to covered=false /
+  conf 0.20, hit the citation floor, and routed W5. Fix: pass the rules pre-screen
+  (status, coverages carried, exclusions) into the determination so flash confirms
+  and cites the governing chunk. Verified live: glass FNOL → W1 → CLOSED, coverage
+  conf 1.00, cites G-AUTO-GLASS. The floor still fires for genuinely uncited cases.
