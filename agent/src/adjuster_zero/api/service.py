@@ -140,7 +140,8 @@ async def inject_scenario(scenario_key: str) -> str:
 
 
 async def inject_custom(
-    fnol_text: str, policy_number: str | None = None, claimant_id: str | None = None
+    fnol_text: str, policy_number: str | None = None, claimant_id: str | None = None,
+    loss_date: str = "", loss_location: str = "",
 ) -> str:
     """Inject a claim from an arbitrary (user-edited) FNOL. The planner (real
     Gemini when configured) extracts + classifies from the text, so routing is
@@ -148,8 +149,9 @@ async def inject_custom(
     store = get_store()
     settings = get_settings()
     planner = get_client() if settings.gemini_configured else OfflineGeminiClient(None)
+    fnol = _compose_fnol(fnol_text, loss_date=loss_date, loss_location=loss_location)
     agg = ClaimAggregate(
-        id=_new_claim_id(), fnol_text=fnol_text,
+        id=_new_claim_id(), fnol_text=fnol,
         claimant_id=claimant_id or "CLMT-DEMO", policy_number=policy_number,
         trace_id=f"trc_{uuid.uuid4().hex[:10]}",
     )
@@ -161,20 +163,38 @@ async def inject_custom(
     return agg.id
 
 
+def _compose_fnol(base: str, *, loss_date: str = "", loss_location: str = "",
+                  note: str = "", policy_number: str | None = None) -> str:
+    """Stitch a photo/text base with the metadata a photo can't carry (date,
+    location) so extraction reaches full completeness when the user supplies them."""
+    parts = [base.strip()]
+    if loss_date:
+        parts.append(f"The loss occurred on {loss_date}.")
+    if loss_location:
+        parts.append(f"Loss location: {loss_location}.")
+    if note:
+        parts.append(note)
+    if policy_number:
+        parts.append(f"Policy {policy_number}.")
+    return " ".join(p for p in parts if p)
+
+
 async def inject_vision(
     image_bytes: bytes, mime: str, policy_number: str | None = None,
     claimant_id: str | None = None, note: str = "",
+    loss_date: str = "", loss_location: str = "",
 ) -> dict[str, Any]:
     """Multimodal intake: Gemini looks at the photo, turns it into an FNOL, and the
-    claim flows through the normal pipeline. Requires a real Gemini key (vision)."""
+    claim flows through the normal pipeline. Requires a real Gemini key (vision).
+
+    A photo carries the damage/peril but not the date or location — those come from
+    the form and are stitched in, so a complete photo+metadata claim can route past
+    the information-request loop."""
     if not get_settings().gemini_configured:
         raise RuntimeError("vision intake requires GEMINI_API_KEY")
     vf, _meta = await describe_damage(get_client(), image_bytes, mime)
-    fnol = vf.description
-    if note:
-        fnol += f" {note}"
-    if policy_number:
-        fnol += f" Policy {policy_number}."
+    fnol = _compose_fnol(vf.description, loss_date=loss_date, loss_location=loss_location,
+                         note=note, policy_number=policy_number)
     store = get_store()
     agg = ClaimAggregate(
         id=_new_claim_id(), fnol_text=fnol, claimant_id=claimant_id or "CLMT-DEMO",

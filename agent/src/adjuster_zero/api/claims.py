@@ -49,6 +49,8 @@ class InjectCustomRequest(BaseModel):
     fnol_text: str
     policy_number: str | None = None
     claimant_id: str | None = None
+    loss_date: str = ""
+    loss_location: str = ""
 
 
 @router.post("/claims/inject_custom")
@@ -57,7 +59,8 @@ async def inject_custom(req: InjectCustomRequest) -> dict[str, str]:
     the route from the text — see it animate on the diagram."""
     if not req.fnol_text.strip():
         raise HTTPException(status_code=400, detail="fnol_text is required")
-    claim_id = await service.inject_custom(req.fnol_text, req.policy_number, req.claimant_id)
+    claim_id = await service.inject_custom(
+        req.fnol_text, req.policy_number, req.claimant_id, req.loss_date, req.loss_location)
     return {"claim_id": claim_id}
 
 
@@ -167,6 +170,8 @@ class VisionRequest(BaseModel):
     policy_number: str | None = None
     claimant_id: str | None = None
     note: str = ""
+    loss_date: str = ""
+    loss_location: str = ""
 
 
 @router.post("/claims/inject_vision")
@@ -180,7 +185,9 @@ async def inject_vision(req: VisionRequest) -> dict[str, Any]:
     if len(raw) > 6_000_000:
         raise HTTPException(status_code=400, detail="image too large (max ~6MB)")
     try:
-        return await service.inject_vision(raw, req.mime, req.policy_number, req.claimant_id, req.note)
+        return await service.inject_vision(
+            raw, req.mime, req.policy_number, req.claimant_id, req.note,
+            req.loss_date, req.loss_location)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

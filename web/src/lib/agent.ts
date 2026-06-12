@@ -24,11 +24,11 @@ export const agent = {
   claims: () => get<Claim[]>("/api/claims"),
   claim: (id: string) => get<ClaimDetail>(`/api/claims/${id}`),
   inject: (scenario_key: string) => post<{ claim_id: string }>("/api/claims/inject", { scenario_key }),
-  injectCustom: (body: { fnol_text: string; policy_number?: string; claimant_id?: string }) =>
+  injectCustom: (body: { fnol_text: string; policy_number?: string; claimant_id?: string; loss_date?: string; loss_location?: string }) =>
     post<{ claim_id: string }>("/api/claims/inject_custom", body),
   events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
   explain: (id: string) => get<{ summary: string; steps: { label: string; detail: string }[]; citations: string[] }>(`/api/claims/${id}/explain`),
-  injectVision: (body: { image_base64: string; mime: string; policy_number?: string; claimant_id?: string; note?: string }) =>
+  injectVision: (body: { image_base64: string; mime: string; policy_number?: string; claimant_id?: string; note?: string; loss_date?: string; loss_location?: string }) =>
     post<{ claim_id: string; description: string; peril: string; visible_damage: string[]; severity_hint: number }>("/api/claims/inject_vision", body),
   simulate: (config: Record<string, number>) =>
     post<{ total: number; route_accuracy: number; stp_rate: number; by_workflow: Record<string, number>; confusion: Record<string, Record<string, number>> }>("/api/admin/simulate", { config }),

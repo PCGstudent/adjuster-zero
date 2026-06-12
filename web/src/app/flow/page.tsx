@@ -16,6 +16,8 @@ interface Preset {
   fnol: string;
   policy?: string;
   claimant?: string;
+  date?: string;
+  location?: string;
 }
 
 const PRESETS: Preset[] = [
@@ -23,11 +25,13 @@ const PRESETS: Preset[] = [
     name: "Clean glass (→ W1)",
     fnol: "A rock hit my windshield on I-80 near Sacramento yesterday and cracked the glass. No other damage, nobody hurt. My policy number is POL-88341.",
     policy: "POL-88341", claimant: "CLMT-001",
+    date: "2026-06-08", location: "I-80 near Sacramento, CA",
   },
   {
     name: "Lapsed policy (→ W2 deny)",
     fnol: "A rock cracked my windshield two days ago. Nobody was hurt. Policy POL-77120. Please process my glass claim.",
     policy: "POL-77120", claimant: "CLMT-002",
+    date: "2026-06-10", location: "US-50, Placerville, CA",
   },
   {
     name: "Missing info (→ W4)",
@@ -38,6 +42,7 @@ const PRESETS: Preset[] = [
     name: "Fraud suspect (→ W3)",
     fnol: "My car was broken into overnight in the driveway and my laptop bag and tools were stolen from the trunk. Policy POL-55200. Open a theft claim.",
     policy: "POL-55200", claimant: "CLMT-004",
+    date: "2026-06-11", location: "Driveway, Oakland, CA",
   },
 ];
 
@@ -45,6 +50,8 @@ export default function Flow() {
   const [fnol, setFnol] = useState(PRESETS[0].fnol);
   const [policy, setPolicy] = useState(PRESETS[0].policy ?? "");
   const [claimant, setClaimant] = useState(PRESETS[0].claimant ?? "");
+  const [lossDate, setLossDate] = useState(PRESETS[0].date ?? "");
+  const [lossLocation, setLossLocation] = useState(PRESETS[0].location ?? "");
   const [claimId, setClaimId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [visionBusy, setVisionBusy] = useState(false);
@@ -67,6 +74,7 @@ export default function Flow() {
       const r = await agent.injectVision({
         image_base64: dataUrl, mime: file.type || "image/jpeg",
         policy_number: policy || undefined, claimant_id: claimant || undefined,
+        loss_date: lossDate || undefined, loss_location: lossLocation || undefined,
       });
       setVisionDesc(`👁️ The agent saw: “${r.description}” (peril: ${r.peril})`);
       setClaimId(r.claim_id);
@@ -82,6 +90,8 @@ export default function Flow() {
     setFnol(p.fnol);
     setPolicy(p.policy ?? "");
     setClaimant(p.claimant ?? "");
+    setLossDate(p.date ?? "");
+    setLossLocation(p.location ?? "");
   }
 
   async function go() {
@@ -92,6 +102,8 @@ export default function Flow() {
         fnol_text: fnol,
         policy_number: policy || undefined,
         claimant_id: claimant || undefined,
+        loss_date: lossDate || undefined,
+        loss_location: lossLocation || undefined,
       });
       setClaimId(r.claim_id);
     } finally {
@@ -132,6 +144,14 @@ export default function Flow() {
               <input value={claimant} onChange={(e) => setClaimant(e.target.value)} placeholder="claimant id (optional)"
                 className="w-1/2 rounded border border-border bg-background px-2 py-1 text-xs" />
             </div>
+            <div className="flex gap-2">
+              <input value={lossDate} onChange={(e) => setLossDate(e.target.value)} type="date"
+                className="w-1/2 rounded border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+                title="Date of loss — a photo can't carry this; supply it so the claim is complete" />
+              <input value={lossLocation} onChange={(e) => setLossLocation(e.target.value)} placeholder="loss location"
+                className="w-1/2 rounded border border-border bg-background px-2 py-1 text-xs"
+                title="Where the loss happened — completes a photo-only claim" />
+            </div>
             <Button onClick={go} disabled={busy || !fnol.trim()} className="w-full">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Go
             </Button>
@@ -142,6 +162,9 @@ export default function Flow() {
                 or drop a photo of the damage — the agent will <em className="mx-1">see</em> it
                 <input type="file" accept="image/*" className="hidden" onChange={onPhoto} disabled={visionBusy} />
               </label>
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                Set the date &amp; location above first — a photo shows the damage but not when or where.
+              </p>
               {visionDesc && <p className="mt-2 text-xs text-primary">{visionDesc}</p>}
             </div>
 
