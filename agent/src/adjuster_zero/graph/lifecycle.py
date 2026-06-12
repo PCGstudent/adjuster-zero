@@ -160,6 +160,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         peril = agg.classification.peril or "other"
         degraded = get_settings().fraud_controls_degraded
         spent = 0  # LLM tokens spent in this node (counts toward the claim budget)
+        policy_coverages: list[str] = []
 
         if agg.policy_number:
             pol = await deps.executor.execute(
@@ -168,6 +169,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             if pol.ok and pol.data:
                 policy_id = pol.data["policy_id"]
                 policy_status = PolicyStatus(pol.data["status"])
+                policy_coverages = [c["code"] for c in pol.data.get("coverages", [])]
                 cov = await deps.executor.execute(
                     None, "coverage_check",
                     {"policy_id": policy_id, "peril": peril, "loss_date": loss_date,
@@ -202,8 +204,15 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         if chunks and policy_id and deps.ground_coverage:
             det, meta = await determine_coverage(
                 deps.planner,
-                query=f"Is a {peril} loss covered under policy {policy_id} "
-                      f"(status {policy_status.value}, loss {loss_date})?",
+                query=(
+                    f"Loss peril '{peril}' on policy {policy_id}, status "
+                    f"{policy_status.value}, loss date {loss_date or 'unknown'}.\n"
+                    f"Policy coverages carried: {policy_coverages or 'unknown'}.\n"
+                    f"Rules pre-screen: covered={coverage.covered}, "
+                    f"applicable_coverage={coverage.applicable_coverage}, "
+                    f"exclusions={coverage.exclusions_triggered}.\n"
+                    "Confirm the determination and cite the governing guideline chunk id(s)."
+                ),
                 chunks=chunks)
             grounded, guardrails = apply_citation_floor(det, {c["id"] for c in chunks})
             coverage = grounded

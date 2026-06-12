@@ -17,10 +17,13 @@ from ..llm.client import EventSink, LLMCallMeta
 
 _FLOOR = 0.5
 _SYSTEM = (
-    "You are a coverage adjudicator. Decide whether the loss is covered, grounded "
-    "ONLY in the provided guideline chunks. Cite the chunk id(s) that support your "
-    "determination in `citations`. If the chunks do not support a determination, "
-    "say covered=false with low confidence and cite nothing. Never invent policy terms."
+    "You are a coverage adjudicator. Decide whether the loss is covered using the "
+    "policy facts stated in the question (status, the coverages it carries, any "
+    "exclusions) AND the provided guideline chunks. You MUST cite the chunk id(s) "
+    "that govern the determination in `citations` (copy the ids exactly as shown in "
+    "brackets). If the policy carries the applicable coverage and is active, it is "
+    "covered; if it is inactive/lapsed or a clear exclusion applies, it is not. "
+    "Never invent policy terms."
 )
 
 
