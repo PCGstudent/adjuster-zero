@@ -24,5 +24,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=8080
 EXPOSE 8080
 
-# Shell form so $PORT expands at runtime.
-CMD uvicorn adjuster_zero.main:app --host 0.0.0.0 --port ${PORT}
+# Launch via the package entrypoint (sets the event-loop policy cross-platform).
+CMD ["python", "-m", "adjuster_zero"]

@@ -17,7 +17,7 @@ dev:            ## run agent (8080) and web (3000) together
 	$(MAKE) -j2 dev-agent dev-web
 
 dev-agent:
-	cd agent && uv run uvicorn adjuster_zero.main:app --reload --port 8080
+	cd agent && uv run python -m adjuster_zero
 
 dev-web:
 	cd web && npm run dev

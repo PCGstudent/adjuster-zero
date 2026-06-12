@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,6 @@ from ..config import get_settings
 from ..domain.aggregate import ClaimAggregate
 from ..graph.lifecycle import LifecycleDeps, run_claim
 from ..llm import get_client
-from ..llm.models import RPM_LIMITS, ModelName  # noqa: F401  (documents the limits used below)
 from ..persistence import InMemoryClaimStore
 from ..rag.embed import get_embedder
 from ..rag.index import InMemoryGuidelineIndex
@@ -28,6 +28,9 @@ from ..seed.data import CLAIM_HISTORY
 from ..seed.offline import OfflineGeminiClient
 from ..tools import RagContext, ToolExecutor, build_registry
 from .golden import golden_claims
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Conservative free-tier daily ceiling for flash-lite (matches CLAUDE.md note).
 _FLASH_LITE_RPD = 1000

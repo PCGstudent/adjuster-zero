@@ -6,8 +6,12 @@ real embeddings; otherwise the deterministic local embedder is used)."""
 from __future__ import annotations
 
 import asyncio
+import sys
 
 from .. import db
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from .chunk import load_chunks
 from .embed import get_embedder
 
