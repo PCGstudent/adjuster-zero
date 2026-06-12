@@ -1,0 +1,52 @@
+[
+  {
+    "key": "clean_glass",
+    "title": "Clean glass claim (auto-settle)",
+    "fnol_text": "A rock hit my windshield on I-80 near Sacramento yesterday and cracked the glass. No other damage, nobody hurt. My policy number is POL-88341. Photo of the crack attached.",
+    "policy_number": "POL-88341",
+    "claimant_id": "CLMT-001",
+    "document_ids": [
+      "photo_windshield_1.jpg"
+    ],
+    "loss_date": "2026-06-08",
+    "ground_truth": {
+      "expected_route": "W1",
+      "expected_terminal_state": "CLOSED",
+      "peril": "glass",
+      "severity": 1,
+      "covered": true
+    }
+  },
+  {
+    "key": "lapsed_policy",
+    "title": "Lapsed policy (refusal \u2192 human review)",
+    "fnol_text": "A rock cracked my windshield on the highway two days ago. Nobody was hurt. Policy POL-77120. Please process my glass claim.",
+    "policy_number": "POL-77120",
+    "claimant_id": "CLMT-002",
+    "document_ids": [
+      "photo_windshield_2.jpg"
+    ],
+    "loss_date": "2026-06-08",
+    "ground_truth": {
+      "expected_route": "W2",
+      "expected_terminal_state": "REVIEW_PENDING",
+      "peril": "glass",
+      "covered": false,
+      "reason": "policy lapsed before loss date"
+    }
+  },
+  {
+    "key": "missing_docs",
+    "title": "Missing information (information-request loop)",
+    "fnol_text": "Hi, I had an accident and my car is damaged. I want to file a claim. Let me know what you need.",
+    "policy_number": null,
+    "claimant_id": "CLMT-003",
+    "document_ids": [],
+    "loss_date": "",
+    "ground_truth": {
+      "expected_route": "W4",
+      "expected_terminal_state": "INFO_PENDING",
+      "reason": "completeness below threshold; missing policy number, loss date, location"
+    }
+  }
+]

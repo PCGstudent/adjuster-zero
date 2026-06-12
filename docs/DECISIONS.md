@@ -78,3 +78,61 @@ Format: ADR-NNN, date, context, decision, consequences.
   `client._invoke`.
 - **Consequences:** Re-audit thesis 1/7 (T2 structural gating, payment
   idempotency) when tools land in Phase 1.
+
+---
+
+## Phase 1 — Vertical slice (Journey A)
+
+### ADR-006 — Lifecycle as a LangGraph StateGraph; deps in closures
+- **Date:** 2026-06-12
+- **Context:** The graph must be durably checkpointed yet hold non-serializable
+  deps (store, planner, executor).
+- **Decision:** State schema = the `ClaimAggregate` (serializable → checkpointed
+  by PostgresSaver). Deps live in closures captured by `build_lifecycle_graph`,
+  never in checkpointed state. Node order: intake → extract → classify →
+  investigate → route → {w1_execute | park} → settle → close. Read-only (T0)
+  investigation runs pre-routing with `workflow=None` (executor permits T0 only).
+- **Consequences:** Fully testable in-memory with a fake planner + MemorySaver;
+  prod uses AsyncPostgresSaver. Tests prove Journey A → CLOSED, lapsed → W2 park,
+  missing → W4, budget exhaustion → ESCALATED.
+
+### ADR-007 — Structural payment gate (thesis 4 made concrete)
+- **Date:** 2026-06-12
+- **Decision:** `PaymentAuthorization` (frozen) requires `policy_gate_ref` OR
+  `approval_ref` via a model_validator; `PaymentExecuteArgs.authorization` is a
+  required field with no default. An ungated payment is therefore unrepresentable
+  at construction. Independently, the workflow allow-list places `payment_execute`
+  only in W1, and the executor rejects it elsewhere (and permits only T0 during
+  triage). Two independent guarantees that payment is unreachable off W1.
+- **Consequences:** Tested at the validation level and the allow-list level.
+
+### ADR-008 — Router reads versioned config; decisions record rule_id + version
+- **Date:** 2026-06-12
+- **Decision:** Phase 1 implements R-01/R-02/R-03/R-99 as a pure function over a
+  `RoutingConfig` loaded from the active `config` row; every routing decision
+  persists `rule_id` and `config_version` for reproducibility. Defaults are a
+  fallback only (no DB / no row).
+- **Consequences:** Policy changes are replayable against history (Phase 2 adds
+  the remaining rules + hot-reload + R-06 LLM tiebreak).
+
+### ADR-009 — Phase 1 guardian outcome + fixes
+- **Date:** 2026-06-12
+- **Outcome:** Verdict **PASS WITH WARNINGS**, no blockers. Fixes applied this
+  phase from the guardian's findings:
+  1. **Thesis 5 atomicity** — added `ClaimStore.commit_transition(agg, event)`
+     wrapping the projection upsert and the event insert in ONE Postgres
+     transaction; all lifecycle transitions now use it (no diverging state/event
+     on a crash). Mid-EXECUTING financial accrual is not a transition and keeps a
+     plain upsert.
+  2. **Thesis 7 ambiguous failure** — the executor now catches non-`ToolFailure`
+     handler exceptions (e.g. timeouts) and returns a NON-retryable failure
+     (never propagates → no blind retry). Failed attempts record with a null
+     idempotency key so they don't poison the unique slot or be mistaken for a
+     settled payment. Tested.
+  3. **Tool events** — clarified that tool activity is a first-class `tool_calls`
+     entity merged into the timeline and streamed via Realtime (no duplicate
+     `claim_events` row); corrected the executor docstring.
+- **Deferred (tracked):** full rail reconcile-before-retry → Phase 4; sanctions
+  fail-closed gate, fraud scan, citations/confidence-floor, full R-00..R-99,
+  approvals/HITL → their respective phases (2/3). Replan counter exists but is
+  unexercised until the Phase 2 replan edge.

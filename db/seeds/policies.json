@@ -1,0 +1,59 @@
+{
+  "POL-88341": {
+    "policy_id": "pol_88341",
+    "status": "active",
+    "holder": "J. Ortiz",
+    "effective_from": "2025-01-01",
+    "effective_to": "2026-12-31",
+    "coverages": [
+      {
+        "code": "AUTO-COMP",
+        "limit": 50000,
+        "deductible": 0
+      },
+      {
+        "code": "AUTO-COLL",
+        "limit": 50000,
+        "deductible": 500
+      }
+    ],
+    "endorsements": [
+      "GLASS-ZERO-DED"
+    ]
+  },
+  "POL-77120": {
+    "policy_id": "pol_77120",
+    "status": "lapsed",
+    "holder": "M. Reyes",
+    "effective_from": "2025-01-01",
+    "effective_to": "2026-06-02",
+    "coverages": [
+      {
+        "code": "AUTO-COMP",
+        "limit": 40000,
+        "deductible": 100
+      }
+    ],
+    "endorsements": []
+  },
+  "POL-90013": {
+    "policy_id": "pol_90013",
+    "status": "active",
+    "holder": "K. Singh",
+    "effective_from": "2025-03-01",
+    "effective_to": "2027-02-28",
+    "coverages": [
+      {
+        "code": "AUTO-COMP",
+        "limit": 60000,
+        "deductible": 250
+      },
+      {
+        "code": "AUTO-COLL",
+        "limit": 60000,
+        "deductible": 500
+      }
+    ],
+    "endorsements": []
+  }
+}

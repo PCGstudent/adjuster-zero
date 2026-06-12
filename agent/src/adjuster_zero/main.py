@@ -12,9 +12,11 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import db
+from .api import claims_router
 from .config import get_settings
 from .graph.hello import run_hello_graph
 from .llm import EscalateToHuman, TaskKind, get_client
@@ -29,6 +31,17 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
 
 
 app = FastAPI(title="Adjuster Zero — Agent", version="0.1.0", lifespan=lifespan)
+
+# The Vercel-hosted dashboard calls this service from the browser. Hobby/demo
+# scope: allow all origins (synthetic data only, operator actions still gated).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(claims_router)
 
 
 @app.get("/healthz")
