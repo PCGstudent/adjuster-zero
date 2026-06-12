@@ -115,4 +115,10 @@ A €1 GCP budget alert is configured; the bill is exported here each month.
 - Evals: `make evals` (offline-deterministic) or the Admin **Run evals** button (RPD-guarded).
 - Deploy: `docs/deploy.md` (Cloud Run + Vercel); demo walkthrough: `docs/demo-script.md`.
 
-See `docs/blueprint.md` for the full spec and `docs/DECISIONS.md` for the ADR log.
+## Learn how it works
+
+- **[`docs/MANUAL.md`](docs/MANUAL.md)** — the complete manual: every phase and flow
+  explained for both newcomers and engineers, with diagrams, a worked end-to-end
+  example, the routing table, the tool catalogue, agentic-RAG, and the safety system.
+- `docs/blueprint.md` — the full architecture spec. `docs/DECISIONS.md` — the ADR log.
+- Live: the **How it works** and **Live flow** pages on the dashboard.

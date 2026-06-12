@@ -199,6 +199,11 @@ export default function How() {
       <p className="mt-10 text-center text-sm text-muted-foreground">
         Watch it happen on a real claim → <Link href="/flow" className="text-primary hover:underline">Live flow</Link>
         {"  ·  "}<Link href="/queue" className="text-primary hover:underline">Claims queue</Link>
+        {"  ·  "}
+        <a href="https://github.com/PCGstudent/adjuster-zero/blob/main/docs/MANUAL.md"
+          target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          Full written manual (GitHub)
+        </a>
       </p>
     </main>
   );
