@@ -17,6 +17,17 @@ class InjectRequest(BaseModel):
     scenario_key: str = "clean_glass"
 
 
+@router.get("/health")
+async def health() -> dict[str, Any]:
+    """Health under the /api prefix. (Google's edge reserves /healthz, so external
+    monitors and the keep-alive cron use this one.)"""
+    from .. import db
+    from ..config import get_settings
+
+    s = get_settings()
+    return {"status": "ok", "db_reachable": await db.ping(), "gemini_configured": s.gemini_configured}
+
+
 @router.get("/scenarios")
 async def list_scenarios() -> list[dict[str, Any]]:
     return [

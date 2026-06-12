@@ -20,8 +20,8 @@ jobs:
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             "${{ secrets.SUPABASE_URL }}/rest/v1/claims?select=id&limit=1" \
             && echo "supabase ok" || echo "supabase ping failed (non-fatal)"
-      - name: Ping Cloud Run agent /healthz
+      - name: Ping Cloud Run agent /api/health
         if: ${{ secrets.AGENT_URL != '' }}
         run: |
-          curl -fsS "${{ secrets.AGENT_URL }}/healthz" \
+          curl -fsS "${{ secrets.AGENT_URL }}/api/health" \
             && echo "agent ok" || echo "agent ping failed (non-fatal)"
