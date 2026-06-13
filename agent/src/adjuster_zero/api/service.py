@@ -250,6 +250,23 @@ async def explain(claim_id: str) -> dict[str, Any] | None:
     }
 
 
+async def journey(claim_id: str) -> dict[str, Any] | None:
+    """Replay a claim's persisted trace as an ordered, step-by-step walkthrough
+    (input → output → explanation per step). Pure: no LLM, no side effects."""
+    from .journey import build_journey
+
+    store = get_store()
+    claim = await store.get_claim(claim_id)
+    if claim is None:
+        return None
+    return build_journey(
+        claim,
+        await store.get_events(claim_id),
+        await store.get_decisions(claim_id),
+        await store.get_tool_calls(claim_id),
+    )
+
+
 async def storm(n: int) -> list[str]:
     """Inject N mixed synthetic claims at once — watch admission control queue them."""
     keys = [s.key for s in SCENARIOS]

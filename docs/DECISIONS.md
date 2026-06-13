@@ -387,3 +387,36 @@ Format: ADR-NNN, date, context, decision, consequences.
 - **Verified:** `make test` 81 green; golden-set replay route_accuracy **1.0** (50
   cases, unchanged mix); live — same FNOL without date/location → completeness 0.40
   → W4, *with* date+location → completeness 1.0 → routes onward.
+
+### ADR-032 — Step-by-step walkthrough ("watch it think")
+- **Date:** 2026-06-13
+- **Decision:** A guided, manually-paced replay of a claim's life. New endpoint
+  `GET /api/claims/{id}/journey` returns an ordered list of steps; each carries the
+  step's real **input**, its **output**, and a plain-language explanation of what
+  happened and why. New page `/walkthrough`: pick a scenario → it runs end-to-end →
+  step through with Prev/Next (+ keyboard arrows + auto-play), a phase rail that
+  lights the current lane, and an input→output→explanation card per step.
+- **Why replay, not live-pause:** pausing the real graph at every node would mean
+  interrupting the engine ~12× per claim — heavy, and it changes the lifecycle for a
+  pedagogical view. Instead the claim runs normally and we project the
+  already-persisted trace (decisions + tool calls + events). The builder
+  (`api/journey.py`) is a **pure function**: no LLM, no side effects, deterministic
+  given the trace. This is the event-sourcing thesis paying off — the audit log is
+  rich enough to reconstruct the whole story after the fact.
+- **Faithfulness (guardian-driven):** explanations are templated but **grounded in
+  the recorded values**, not asserted. The coverage step says "floored to 0.5 and
+  sent to a human" only when the recorded confidence actually was floored; the
+  payment step quotes the real `policy_gate_ref`/`approval_ref` from the call's args;
+  the narrative step shows the real FNOL as its input. The extract step explicitly
+  contrasts the LLM's self-score ("ignored for routing") with the deterministic
+  completeness (the authority) — the orchestrator-disposes thesis, made visible.
+- **Determinism:** timeline merges decisions + tool calls by ISO `ts`, tie-broken by
+  the executor's monotonic `seq`; stable sort ⇒ identical output for an identical
+  trace.
+- **Known follow-up (pre-existing, out of scope):** `tools/executor.py::_redact` is a
+  no-op whose docstring promises redaction. Harmless today (synthetic data only), but
+  the walkthrough is now a second consumer of raw tool args — implement or drop it
+  before any real-looking refs/PII enter args.
+- **Verified:** `make test` 82 green incl. `test_journey.py` (asserts pure projection,
+  contiguous steps, RouterInput as the route step's input, deterministic completeness
+  surfaced, payment gate present); web build clean.

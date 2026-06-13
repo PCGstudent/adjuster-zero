@@ -75,6 +75,32 @@ export interface GlobalEvent {
   data: Record<string, unknown>;
 }
 
+export interface JourneyStep {
+  index: number;
+  phase: string;
+  actor: string;
+  title: string;
+  subtitle: string;
+  input: { label: string; value: unknown };
+  output: { label: string; value: unknown };
+  explanation: string;
+  meta: Record<string, unknown>;
+}
+
+export interface Journey {
+  claim_id: string;
+  final: {
+    state: string | null;
+    workflow: string | null;
+    rule_id: string | null;
+    paid: number | null;
+    amount_est: number | null;
+    fraud_score: number | null;
+  };
+  phases: { key: string; label: string; active: boolean }[];
+  steps: JourneyStep[];
+}
+
 export interface Approval {
   id: string;
   claim_id: string;

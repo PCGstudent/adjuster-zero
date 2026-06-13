@@ -1,4 +1,4 @@
-import type { Approval, Claim, ClaimDetail, GlobalEvent, Scenario } from "./types";
+import type { Approval, Claim, ClaimDetail, GlobalEvent, Journey, Scenario } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:8080";
 
@@ -28,6 +28,7 @@ export const agent = {
     post<{ claim_id: string }>("/api/claims/inject_custom", body),
   events: (limit = 60) => get<GlobalEvent[]>(`/api/events?limit=${limit}`),
   explain: (id: string) => get<{ summary: string; steps: { label: string; detail: string }[]; citations: string[] }>(`/api/claims/${id}/explain`),
+  journey: (id: string) => get<Journey>(`/api/claims/${id}/journey`),
   injectVision: (body: { image_base64: string; mime: string; policy_number?: string; claimant_id?: string; note?: string; loss_date?: string; loss_location?: string }) =>
     post<{ claim_id: string; description: string; peril: string; visible_damage: string[]; severity_hint: number }>("/api/claims/inject_vision", body),
   simulate: (config: Record<string, number>) =>

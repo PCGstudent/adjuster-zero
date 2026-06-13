@@ -3,6 +3,7 @@ import Link from "next/link";
 const LINKS = [
   ["/how", "How it works"],
   ["/flow", "Live flow"],
+  ["/walkthrough", "Step-by-step"],
   ["/queue", "Queue"],
   ["/inbox", "Approval inbox"],
   ["/console", "Agent console"],

@@ -164,6 +164,16 @@ async def explain_claim(claim_id: str) -> dict[str, Any]:
     return result
 
 
+@router.get("/claims/{claim_id}/journey")
+async def claim_journey(claim_id: str) -> dict[str, Any]:
+    """Step-by-step walkthrough of the claim's trace (input/output/explanation per
+    step) — powers the guided 'watch it think' page. Pure replay, no LLM."""
+    result = await service.journey(claim_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="claim not found")
+    return result
+
+
 class VisionRequest(BaseModel):
     image_base64: str
     mime: str = "image/jpeg"
