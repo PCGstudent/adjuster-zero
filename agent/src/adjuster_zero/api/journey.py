@@ -107,14 +107,25 @@ def _money(v: Any) -> str:
 
 def _step(idx: int, phase: str, actor: str, title: str, subtitle: str,
           in_label: str, in_value: Any, out_label: str, out_value: Any,
-          explanation: str, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+          explanation: str, meta: dict[str, Any] | None = None,
+          prompt: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "index": idx, "phase": phase, "actor": _ACTOR_FOR.get(actor, actor),
         "title": title, "subtitle": subtitle,
         "input": {"label": in_label, "value": in_value},
         "output": {"label": out_label, "value": out_value},
         "explanation": explanation, "meta": meta or {},
+        # The verbatim request we sent to the LLM (None for tool / pure-rule steps).
+        "prompt": prompt,
     }
+
+
+def _prompt_of(d: dict[str, Any]) -> dict[str, Any] | None:
+    """Pull the persisted request (system + user prompt) off an LLM decision."""
+    user, system = d.get("prompt"), d.get("system_prompt")
+    if not user and not system:
+        return None
+    return {"system": system, "user": user}
 
 
 def _llm_subtitle(d: dict[str, Any]) -> str:
@@ -154,7 +165,8 @@ def _extract_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
     return _step(idx, "EXTRACT", "llm", "Extract structured fields from the FNOL",
                  _llm_subtitle(d), "Raw FNOL text", fnol, "Typed fields + completeness",
                  body, expl, {"model": d.get("model"), "tokens": (d.get("tokens_in") or 0)
-                 + (d.get("tokens_out") or 0), "latency_ms": d.get("latency_ms")})
+                 + (d.get("tokens_out") or 0), "latency_ms": d.get("latency_ms")},
+                 prompt=_prompt_of(d))
 
 
 def _classify_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
@@ -168,7 +180,8 @@ def _classify_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
                  {"line": out.get("line"), "peril": out.get("peril"),
                   "severity": out.get("severity"), "complexity": out.get("complexity"),
                   "confidence": out.get("confidence"), "alternatives": out.get("alternatives")},
-                 expl, {"model": d.get("model"), "confidence": out.get("confidence")})
+                 expl, {"model": d.get("model"), "confidence": out.get("confidence")},
+                 prompt=_prompt_of(d))
 
 
 def _action_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
@@ -188,7 +201,8 @@ def _action_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
                      "Plausibility verdict",
                      {"plausible": out.get("plausible"), "coherence": out.get("coherence"),
                       "anomalies": out.get("anomalies"), "reason": out.get("reason")},
-                     expl, {"model": d.get("model"), "confidence": out.get("confidence")})
+                     expl, {"model": d.get("model"), "confidence": out.get("confidence")},
+                     prompt=_prompt_of(d))
     # grounded coverage determination — describe what the recorded values actually show.
     conf = d.get("confidence")
     cites = d.get("citations") or []
@@ -212,7 +226,8 @@ def _action_step(idx: int, d: dict[str, Any], fnol: str) -> dict[str, Any]:
                  {"covered": out.get("covered"), "confidence": conf,
                   "citations": cites, "exclusions": out.get("exclusions_triggered"),
                   "guardrails": d.get("guardrails")},
-                 expl, {"model": d.get("model"), "confidence": conf, "citations": cites})
+                 expl, {"model": d.get("model"), "confidence": conf, "citations": cites},
+                 prompt=_prompt_of(d))
 
 
 def _route_step(idx: int, d: dict[str, Any]) -> dict[str, Any]:
@@ -241,7 +256,8 @@ def _tiebreak_step(idx: int, d: dict[str, Any]) -> dict[str, Any]:
                  {"context": "fraud_score + signals"}, "Tiebreak choice",
                  {"workflow": out.get("workflow"), "rationale": out.get("rationale"),
                   "confidence": out.get("confidence"), "alternatives": out.get("alternatives")},
-                 expl, {"model": d.get("model"), "confidence": out.get("confidence")})
+                 expl, {"model": d.get("model"), "confidence": out.get("confidence")},
+                 prompt=_prompt_of(d))
 
 
 def _gate_ref(args: dict[str, Any]) -> str | None:

@@ -34,7 +34,8 @@ class FakeClient(GeminiClient):
         self._c = classification
 
     async def generate_structured(self, task, prompt, schema, *, system=None, temperature=0.0, event_sink=None):  # type: ignore[override]
-        meta = LLMCallMeta(model="gemini-2.5-flash-lite", tokens_in=200, tokens_out=80, latency_ms=120)
+        meta = LLMCallMeta(model="gemini-2.5-flash-lite", tokens_in=200, tokens_out=80,
+                           latency_ms=120, prompt=prompt, system=system)
         if task == TaskKind.EXTRACT:
             return self._e, meta
         if task == TaskKind.LETTER:
@@ -108,5 +109,10 @@ def test_journey_replays_clean_glass_end_to_end() -> None:
         # payment_execute appears and its explanation teaches the structural gate
         pay = next(s for s in steps if s["meta"].get("tool") == "payment_execute")
         assert "unrepresentable" in pay["explanation"]
+
+        # every LLM step exposes the verbatim prompt we sent; tool/rule steps do not
+        assert ext["prompt"] and ext["prompt"]["user"] and ext["prompt"]["system"]
+        assert pay["prompt"] is None  # a tool call has no prompt
+        assert route["prompt"] is None  # the pure router sends no prompt
 
     asyncio.run(run())

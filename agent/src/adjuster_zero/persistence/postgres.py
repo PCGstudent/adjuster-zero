@@ -136,13 +136,13 @@ class PostgresClaimStore:
         async with pool.connection() as conn, conn.cursor() as cur:
             await cur.execute(
                 """
-                INSERT INTO agent_decisions (claim_id, decision_type, model, output,
-                    confidence, alternatives, citations, guardrails, rule_id,
-                    config_version, tokens_in, tokens_out, latency_ms, trace_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                INSERT INTO agent_decisions (claim_id, decision_type, model, prompt,
+                    system_prompt, output, confidence, alternatives, citations, guardrails,
+                    rule_id, config_version, tokens_in, tokens_out, latency_ms, trace_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """,
-                (dec.claim_id, dec.decision_type, dec.model, Json(dec.output),
-                 dec.confidence, Json(dec.alternatives), Json(dec.citations),
+                (dec.claim_id, dec.decision_type, dec.model, dec.prompt, dec.system_prompt,
+                 Json(dec.output), dec.confidence, Json(dec.alternatives), Json(dec.citations),
                  Json(dec.guardrails), dec.rule_id, dec.config_version,
                  dec.tokens_in, dec.tokens_out, dec.latency_ms, dec.trace_id),
             )

@@ -85,6 +85,7 @@ export interface JourneyStep {
   output: { label: string; value: unknown };
   explanation: string;
   meta: Record<string, unknown>;
+  prompt: { system: string | null; user: string | null } | null;
 }
 
 export interface Journey {

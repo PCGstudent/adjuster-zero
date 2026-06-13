@@ -420,3 +420,22 @@ Format: ADR-NNN, date, context, decision, consequences.
 - **Verified:** `make test` 82 green incl. `test_journey.py` (asserts pure projection,
   contiguous steps, RouterInput as the route step's input, deterministic completeness
   surfaced, payment gate present); web build clean.
+
+### ADR-033 — Persist the verbatim LLM prompt as decision provenance
+- **Date:** 2026-06-13
+- **Decision:** Every LLM call now captures the exact request it sent — `prompt`
+  (user) and `system` — on `LLMCallMeta` (set once in `GeminiClient.generate_structured`),
+  and the lifecycle writes them onto the `DecisionRecord` (new `prompt` /
+  `system_prompt` fields + columns via migration `005_decision_prompts.sql`, applied
+  live). The walkthrough surfaces them in a dedicated "Prompt sent to the LLM" panel
+  (system + user, monospace) on every LLM step; tool and pure-rule steps have none.
+- **Why:** thesis 9 says a decision is first-class provenance — model, tokens,
+  latency, citations — "not a log line." The prompt is the most important missing
+  piece of that provenance, and for the teaching surface it closes the loop: you see
+  the input, the *literal request*, the output, and the explanation. (The DDL already
+  had an unused `prompt_hash`; full text is what's actually useful here.)
+- **Scope:** captured for all five LLM decision points (extract, classify, grounded
+  coverage, narrative screen, R-06 tiebreak). The deterministic router records
+  `prompt = NULL` — correct: it sends no prompt. Offline/fake clients leave it null.
+- **Verified:** 82 tests green (`test_journey` asserts LLM steps expose the prompt and
+  tool/rule steps don't); migration applied to live `agent_decisions`.

@@ -118,6 +118,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         )
         await store.record_decision(DecisionRecord(
             claim_id=agg.id, decision_type="extract", model=meta.model,
+            prompt=meta.prompt, system_prompt=meta.system,
             output={**result.model_dump(), "deterministic_completeness": completeness,
                     "deterministic_missing": missing},
             confidence=completeness,
@@ -146,6 +147,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
         )
         await store.record_decision(DecisionRecord(
             claim_id=agg.id, decision_type="classify", model=meta.model,
+            prompt=meta.prompt, system_prompt=meta.system,
             output=result.model_dump(), confidence=result.confidence,
             alternatives=[a.model_dump() for a in result.alternatives],
             guardrails={"schema_ok": True, "repaired": meta.repaired},
@@ -232,6 +234,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             spent += meta.tokens_in + meta.tokens_out
             await store.record_decision(DecisionRecord(
                 claim_id=agg.id, decision_type="action", model=meta.model,
+                prompt=meta.prompt, system_prompt=meta.system,
                 output=det.model_dump(), confidence=grounded.confidence,
                 citations=grounded.citations, guardrails=guardrails,
                 tokens_in=meta.tokens_in, tokens_out=meta.tokens_out,
@@ -250,6 +253,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
                 narrative_implausible = not na.plausible
                 await store.record_decision(DecisionRecord(
                     claim_id=agg.id, decision_type="action", model=na_meta.model,
+                    prompt=na_meta.prompt, system_prompt=na_meta.system,
                     output=na.model_dump(), confidence=na.coherence,
                     guardrails={"narrative_implausible": narrative_implausible},
                     tokens_in=na_meta.tokens_in, tokens_out=na_meta.tokens_out,
@@ -350,6 +354,7 @@ def build_lifecycle_graph(deps: LifecycleDeps) -> StateGraph:
             spent += meta.tokens_in + meta.tokens_out
             await store.record_decision(DecisionRecord(
                 claim_id=agg.id, decision_type="tiebreak", model=meta.model,
+                prompt=meta.prompt, system_prompt=meta.system,
                 output=tb.model_dump(), confidence=tb.confidence,
                 alternatives=[a.model_dump() for a in tb.alternatives],
                 tokens_in=meta.tokens_in, tokens_out=meta.tokens_out,

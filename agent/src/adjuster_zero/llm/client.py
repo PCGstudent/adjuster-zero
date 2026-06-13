@@ -50,6 +50,10 @@ class LLMCallMeta:
     repaired: bool = False
     downgraded: bool = False
     rate_limited_waits: int = 0
+    # The exact request we sent — captured for the decision log so the walkthrough
+    # can show the prompt verbatim (thesis 9: provenance, not a log line).
+    prompt: str | None = None
+    system: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -170,7 +174,7 @@ class GeminiClient:
         then SchemaRepairFailed (an EscalateToHuman subclass). Pass ``images`` as
         (bytes, mime) pairs for multimodal extraction."""
         model = model_for_task(task)
-        meta = LLMCallMeta(model=model.value)
+        meta = LLMCallMeta(model=model.value, prompt=prompt, system=system)
         started = time.perf_counter()
 
         contents: Any = self._contents(prompt, images)

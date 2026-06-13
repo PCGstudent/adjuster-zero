@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, ChevronRight, Loader2, Play, Pause, RotateCcw, Sparkles,
+  ChevronLeft, ChevronRight, Loader2, Play, Pause, RotateCcw, Send, Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -218,6 +218,27 @@ export default function Walkthrough() {
                   <ValueView value={cur.output.value} />
                 </div>
               </div>
+
+              {/* the verbatim prompt we sent to the LLM (LLM steps only) */}
+              {cur.prompt && (cur.prompt.system || cur.prompt.user) && (
+                <div className="rounded-lg border border-violet-500/40 bg-violet-500/5 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-violet-300">
+                    <Send className="h-3.5 w-3.5" /> Prompt sent to the LLM
+                  </div>
+                  {cur.prompt.system && (
+                    <div className="mb-2">
+                      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">System instruction</div>
+                      <pre className="max-h-44 overflow-auto whitespace-pre-wrap break-words rounded bg-background/70 p-2 font-mono text-xs leading-relaxed text-foreground/90">{cur.prompt.system}</pre>
+                    </div>
+                  )}
+                  {cur.prompt.user && (
+                    <div>
+                      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">User message</div>
+                      <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words rounded bg-background/70 p-2 font-mono text-xs leading-relaxed text-foreground/90">{cur.prompt.user}</pre>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* explanation */}
               <div className="rounded-lg border border-border bg-card/40 p-3">

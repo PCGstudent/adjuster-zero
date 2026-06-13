@@ -17,6 +17,8 @@ class DecisionRecord(BaseModel):
     claim_id: str
     decision_type: str  # classify | route | plan | tiebreak | action | extract
     model: str | None = None
+    prompt: str | None = None  # the exact user prompt we sent (None for pure-rule decisions)
+    system_prompt: str | None = None  # the system instruction we sent
     output: dict[str, Any] = Field(default_factory=dict)
     confidence: float | None = None
     alternatives: list[dict[str, Any]] = Field(default_factory=list)
