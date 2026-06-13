@@ -6,6 +6,7 @@ validated model plus call metadata for the decision log.
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Mapping
 
 from ..llm import GeminiClient, TaskKind
@@ -50,9 +51,19 @@ async def extract_fnol_fields(
     client: GeminiClient,
     fnol_text: str,
     *,
+    today: str | None = None,
     event_sink: EventSink | None = None,
 ) -> tuple[FnolExtraction, LLMCallMeta]:
-    prompt = f"FNOL text:\n\"\"\"\n{fnol_text}\n\"\"\"\n\nExtract the fields."
+    # Ground the model in the real current date so relative dates ("yesterday",
+    # "last Tuesday") resolve correctly. Without this the model falls back to its
+    # own stale notion of "now", and a wrong loss_date wrongly trips the coverage
+    # pre-screen (policy-inactive-at-loss).
+    today = today or dt.datetime.now(dt.UTC).date().isoformat()
+    prompt = (
+        f"Today's date is {today}. Resolve any relative dates in the notice "
+        "(e.g. 'yesterday', 'last week') against it and output loss_date as ISO "
+        f"YYYY-MM-DD.\n\nFNOL text:\n\"\"\"\n{fnol_text}\n\"\"\"\n\nExtract the fields."
+    )
     return await client.generate_structured(
         TaskKind.EXTRACT, prompt, FnolExtraction, system=_SYSTEM, event_sink=event_sink
     )
